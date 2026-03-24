@@ -15,40 +15,171 @@ const MAPBOX_SPECIFICITY = {
   country: 8,
 }
 
-// Query Mapbox geocoding v6. Returns a single feature or null.
-async function mapboxSearch(query) {
-  const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(query)}&access_token=${MAPBOX_TOKEN}&limit=1`
+// Common country name → ISO 3166-1 alpha-2 code mapping for Mapbox filtering.
+// Includes historical names that appear in GEDCOM files.
+const COUNTRY_CODES = {
+  'australia': 'AU',
+  'united states': 'US',
+  'usa': 'US',
+  'united states of america': 'US',
+  'united kingdom': 'GB',
+  'england': 'GB',
+  'scotland': 'GB',
+  'wales': 'GB',
+  'northern ireland': 'GB',
+  'ireland': 'IE',
+  'canada': 'CA',
+  'new zealand': 'NZ',
+  'south africa': 'ZA',
+  'germany': 'DE',
+  'deutschland': 'DE',
+  'prussia': 'DE',
+  'bavaria': 'DE',
+  'saxony': 'DE',
+  'france': 'FR',
+  'italy': 'IT',
+  'spain': 'ES',
+  'netherlands': 'NL',
+  'holland': 'NL',
+  'belgium': 'BE',
+  'switzerland': 'CH',
+  'austria': 'AT',
+  'austria-hungary': 'AT',
+  'poland': 'PL',
+  'czech republic': 'CZ',
+  'czechia': 'CZ',
+  'bohemia': 'CZ',
+  'moravia': 'CZ',
+  'slovakia': 'SK',
+  'hungary': 'HU',
+  'romania': 'RO',
+  'russia': 'RU',
+  'ukraine': 'UA',
+  'sweden': 'SE',
+  'norway': 'NO',
+  'denmark': 'DK',
+  'finland': 'FI',
+  'india': 'IN',
+  'china': 'CN',
+  'japan': 'JP',
+  'mexico': 'MX',
+  'brazil': 'BR',
+  'argentina': 'AR',
+  'chile': 'CL',
+  'colombia': 'CO',
+  'peru': 'PE',
+  'portugal': 'PT',
+  'greece': 'GR',
+  'turkey': 'TR',
+  'egypt': 'EG',
+  'nigeria': 'NG',
+  'kenya': 'KE',
+  'ghana': 'GH',
+  'philippines': 'PH',
+  'indonesia': 'ID',
+  'malaysia': 'MY',
+  'singapore': 'SG',
+  'vietnam': 'VN',
+  'thailand': 'TH',
+  'korea': 'KR',
+  'south korea': 'KR',
+  'taiwan': 'TW',
+  'israel': 'IL',
+  'palestine': 'PS',
+  'lebanon': 'LB',
+  'syria': 'SY',
+  'iraq': 'IQ',
+  'iran': 'IR',
+  'pakistan': 'PK',
+  'bangladesh': 'BD',
+  'sri lanka': 'LK',
+  'nepal': 'NP',
+  'jamaica': 'JM',
+  'trinidad and tobago': 'TT',
+  'barbados': 'BB',
+  'cuba': 'CU',
+  'croatia': 'HR',
+  'serbia': 'RS',
+  'slovenia': 'SI',
+  'bulgaria': 'BG',
+  'lithuania': 'LT',
+  'latvia': 'LV',
+  'estonia': 'EE',
+  'iceland': 'IS',
+  'luxembourg': 'LU',
+  'malta': 'MT',
+  'cyprus': 'CY',
+}
+
+function countryCode(name) {
+  if (!name) return null
+  return COUNTRY_CODES[name.toLowerCase().trim()] || null
+}
+
+// Query Mapbox geocoding v6. Returns array of features.
+async function mapboxSearch(query, { country } = {}) {
+  const params = new URLSearchParams({
+    q: query,
+    access_token: MAPBOX_TOKEN,
+    limit: '5',
+  })
+  if (country) params.set('country', country)
+  const url = `https://api.mapbox.com/search/geocode/v6/forward?${params}`
   try {
     const res = await fetch(url)
-    if (!res.ok) return null
+    if (!res.ok) return []
     const data = await res.json()
-    return data.features?.[0] || null
+    return data.features || []
   } catch {
-    return null
+    return []
   }
+}
+
+// Pick the best feature from a list, preferring more specific types.
+function pickBestFeature(features) {
+  if (features.length === 0) return null
+  let best = features[0]
+  let bestScore = MAPBOX_SPECIFICITY[best.properties?.feature_type] ?? 4
+  for (let i = 1; i < features.length; i++) {
+    const score = MAPBOX_SPECIFICITY[features[i].properties?.feature_type] ?? 4
+    if (score < bestScore) {
+      best = features[i]
+      bestScore = score
+    }
+  }
+  return { feature: best, specificity: bestScore }
 }
 
 // Try progressively broader queries against Mapbox.
 // "Lessen, Elchniederung, Prussia" → try full string, then drop the leftmost
 // part each time until we get a match.
 async function tryMapbox(parts) {
+  // Use the last part as a country hint (GEDCOM places end with country)
+  const countryHint = countryCode(parts[parts.length - 1])
+
   let bestFeature = null
   let bestSpecificity = Infinity
 
   for (let i = 0; i < parts.length; i++) {
     const query = parts.slice(i).join(', ')
-    const feature = await mapboxSearch(query)
-    if (!feature) continue
 
-    const featureType = feature.properties?.feature_type
-    const specificity = MAPBOX_SPECIFICITY[featureType] ?? 4
-
-    if (!bestFeature || specificity < bestSpecificity) {
-      bestFeature = feature
-      bestSpecificity = specificity
+    // Try with country filter first, then without if no results
+    let features = countryHint
+      ? await mapboxSearch(query, { country: countryHint })
+      : []
+    if (features.length === 0) {
+      features = await mapboxSearch(query)
     }
 
-    if (specificity <= 3) break
+    const pick = pickBestFeature(features)
+    if (!pick) continue
+
+    if (!bestFeature || pick.specificity < bestSpecificity) {
+      bestFeature = pick.feature
+      bestSpecificity = pick.specificity
+    }
+
+    if (pick.specificity <= 3) break
   }
 
   if (!bestFeature) return null

@@ -181,16 +181,12 @@ export function splitPlace(place) {
   return { parts, spaceParts }
 }
 
-// Try progressively broader queries against Mapbox.
-// "Lessen, Elchniederung, Prussia" → try full string, then drop the leftmost
-// part each time until we get a match.
-async function tryMapbox(parts) {
+// Core geocoding logic, takes a searchFn(query, {country?}) → features[]
+// so it can be tested without hitting the network.
+export async function tryGeocode(parts, searchFn) {
   const lastPart = parts[parts.length - 1]
   const multiCodes = multiCountryCodes(lastPart)
   const singleCode = countryCode(lastPart)
-
-  // Build list of country codes to try: multi-country historical names
-  // get tried in order, single-code countries get one attempt.
   const countryCodesToTry = multiCodes || (singleCode ? [singleCode] : [])
 
   let bestFeature = null
@@ -199,14 +195,13 @@ async function tryMapbox(parts) {
   for (let i = 0; i < parts.length; i++) {
     const query = parts.slice(i).join(', ')
 
-    // Try with each country code, then fall back to unfiltered
     let features = []
     for (const code of countryCodesToTry) {
-      features = await mapboxSearch(query, { country: code })
+      features = await searchFn(query, { country: code })
       if (features.length > 0) break
     }
     if (features.length === 0) {
-      features = await mapboxSearch(query)
+      features = await searchFn(query, {})
     }
 
     const pick = pickBestFeature(features)
@@ -236,9 +231,9 @@ async function geocodePlace(place) {
 
   const { parts, spaceParts } = splitPlace(place)
 
-  let result = await tryMapbox(parts)
+  let result = await tryGeocode(parts, mapboxSearch)
   if (!result && spaceParts) {
-    result = await tryMapbox(spaceParts)
+    result = await tryGeocode(spaceParts, mapboxSearch)
   }
 
   if (!result) {

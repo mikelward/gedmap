@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import MapGL, { Source, Layer } from 'react-map-gl/mapbox'
 import StatsOverlay from './StatsOverlay'
+import MiniMap from './MiniMap'
 import AncestorSidebar from './AncestorSidebar'
 import { MobileSheet, DesktopPopup } from './AncestorSheet'
 
@@ -280,6 +281,8 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
           <Layer {...unclusteredLabelLayer} />
         </Source>
       </MapGL>
+
+      {!isMobile && <MiniMap ancestors={ancestors} mapRef={mapRef} />}
 
       {isMobile ? (
         <MobileSheet

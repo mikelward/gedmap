@@ -282,7 +282,7 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
         </Source>
       </MapGL>
 
-      {!isMobile && <MiniMap ancestors={ancestors} mapRef={mapRef} />}
+      <MiniMap ancestors={ancestors} mapRef={mapRef} isMobile={isMobile} />
 
       {isMobile ? (
         <MobileSheet

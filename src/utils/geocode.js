@@ -3,7 +3,7 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const cache = new Map()
 
 // Mapbox specificity by feature_type — lower = more specific.
-const MAPBOX_SPECIFICITY = {
+export const MAPBOX_SPECIFICITY = {
   address: 0,
   street: 1,
   neighborhood: 2,
@@ -17,7 +17,7 @@ const MAPBOX_SPECIFICITY = {
 
 // Common country name → ISO 3166-1 alpha-2 code mapping for Mapbox filtering.
 // Includes historical names that appear in GEDCOM files.
-const COUNTRY_CODES = {
+export const COUNTRY_CODES = {
   'australia': 'AU',
   'united states': 'US',
   'usa': 'US',
@@ -101,6 +101,14 @@ const COUNTRY_CODES = {
   'croatia': 'HR',
   'serbia': 'RS',
   'slovenia': 'SI',
+  'bosnia and herzegovina': 'BA',
+  'bosnia': 'BA',
+  'herzegovina': 'BA',
+  'montenegro': 'ME',
+  'north macedonia': 'MK',
+  'macedonia': 'MK',
+  'kosovo': 'XK',
+  'yugoslavia': 'HR',  // default to Croatia; tryMapbox also tries RS, BA, SI
   'bulgaria': 'BG',
   'lithuania': 'LT',
   'latvia': 'LV',
@@ -109,11 +117,27 @@ const COUNTRY_CODES = {
   'luxembourg': 'LU',
   'malta': 'MT',
   'cyprus': 'CY',
+  'albania': 'AL',
 }
 
-function countryCode(name) {
+// Historical names that map to multiple modern countries.
+// tryMapbox will try each code in order until it gets a result.
+export const MULTI_COUNTRY_CODES = {
+  'yugoslavia': ['HR', 'RS', 'BA', 'SI', 'ME', 'MK'],
+  'austria-hungary': ['AT', 'HU', 'CZ', 'HR', 'SK', 'BA'],
+  'prussia': ['DE', 'PL', 'RU'],
+  'bohemia': ['CZ'],
+  'moravia': ['CZ'],
+}
+
+export function countryCode(name) {
   if (!name) return null
   return COUNTRY_CODES[name.toLowerCase().trim()] || null
+}
+
+export function multiCountryCodes(name) {
+  if (!name) return null
+  return MULTI_COUNTRY_CODES[name.toLowerCase().trim()] || null
 }
 
 // Query Mapbox geocoding v6. Returns array of features.
@@ -136,7 +160,7 @@ async function mapboxSearch(query, { country } = {}) {
 }
 
 // Pick the best feature from a list, preferring more specific types.
-function pickBestFeature(features) {
+export function pickBestFeature(features) {
   if (features.length === 0) return null
   let best = features[0]
   let bestScore = MAPBOX_SPECIFICITY[best.properties?.feature_type] ?? 4
@@ -150,12 +174,24 @@ function pickBestFeature(features) {
   return { feature: best, specificity: bestScore }
 }
 
+// Split a GEDCOM place string into parts for progressive querying.
+export function splitPlace(place) {
+  const parts = place.split(',').map((s) => s.trim())
+  const spaceParts = place.includes(',') ? null : place.split(/\s+/)
+  return { parts, spaceParts }
+}
+
 // Try progressively broader queries against Mapbox.
 // "Lessen, Elchniederung, Prussia" → try full string, then drop the leftmost
 // part each time until we get a match.
 async function tryMapbox(parts) {
-  // Use the last part as a country hint (GEDCOM places end with country)
-  const countryHint = countryCode(parts[parts.length - 1])
+  const lastPart = parts[parts.length - 1]
+  const multiCodes = multiCountryCodes(lastPart)
+  const singleCode = countryCode(lastPart)
+
+  // Build list of country codes to try: multi-country historical names
+  // get tried in order, single-code countries get one attempt.
+  const countryCodesToTry = multiCodes || (singleCode ? [singleCode] : [])
 
   let bestFeature = null
   let bestSpecificity = Infinity
@@ -163,10 +199,12 @@ async function tryMapbox(parts) {
   for (let i = 0; i < parts.length; i++) {
     const query = parts.slice(i).join(', ')
 
-    // Try with country filter first, then without if no results
-    let features = countryHint
-      ? await mapboxSearch(query, { country: countryHint })
-      : []
+    // Try with each country code, then fall back to unfiltered
+    let features = []
+    for (const code of countryCodesToTry) {
+      features = await mapboxSearch(query, { country: code })
+      if (features.length > 0) break
+    }
     if (features.length === 0) {
       features = await mapboxSearch(query)
     }
@@ -196,13 +234,7 @@ async function tryMapbox(parts) {
 async function geocodePlace(place) {
   if (cache.has(place)) return cache.get(place)
 
-  // GEDCOM places are hierarchical: "Lessen, Elchniederung, Prussia"
-  // Split into parts and try progressively broader queries.
-  const parts = place.split(',').map((s) => s.trim())
-
-  // Also try without commas — some GEDCOM files use spaces instead:
-  // "Malmesbury Wiltshire" should still work.
-  const spaceParts = place.includes(',') ? null : place.split(/\s+/)
+  const { parts, spaceParts } = splitPlace(place)
 
   let result = await tryMapbox(parts)
   if (!result && spaceParts) {

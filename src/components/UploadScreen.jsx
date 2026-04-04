@@ -60,7 +60,7 @@ export default function UploadScreen({ onFileUpload, appError }) {
 
       <div className="text-center mb-10">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-3">
-          AncestryAtlas
+          GedMap
         </h1>
         <p className="text-lg text-gray-500 dark:text-gray-400">
           See where your family came from

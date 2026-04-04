@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
+import { useTheme } from '../ThemeContext'
 
 const DESKTOP_W = 160
 const DESKTOP_H = 100
@@ -8,9 +9,11 @@ const MOBILE_EXPANDED_W = 200
 const MOBILE_EXPANDED_H = 125
 const DOT_R = 2.5
 const DOT_R_SMALL = 1.5
-const BG = '#1a1a2e'
-const DOT_COLOR = '#f59e0b'
-const VIEWPORT_COLOR = 'rgba(255,255,255,0.5)'
+
+const COLORS = {
+  dark: { bg: '#1a1a2e', dot: '#f59e0b', viewport: 'rgba(255,255,255,0.5)', border: 'rgba(255,255,255,0.2)' },
+  light: { bg: '#e5e7eb', dot: '#d97706', viewport: 'rgba(0,0,0,0.4)', border: 'rgba(0,0,0,0.15)' },
+}
 
 // Mercator projection helpers (parameterized by canvas size)
 function lngToX(lng, w) {
@@ -33,6 +36,8 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
   const canvasRef = useRef(null)
   const [viewport, setViewport] = useState(null)
   const [expanded, setExpanded] = useState(false)
+  const { theme } = useTheme()
+  const colors = COLORS[theme] || COLORS.dark
 
   const w = isMobile ? (expanded ? MOBILE_EXPANDED_W : MOBILE_COLLAPSED_W) : DESKTOP_W
   const h = isMobile ? (expanded ? MOBILE_EXPANDED_H : MOBILE_COLLAPSED_H) : DESKTOP_H
@@ -76,11 +81,11 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
     ctx.scale(dpr, dpr)
 
     // Background
-    ctx.fillStyle = BG
+    ctx.fillStyle = colors.bg
     ctx.fillRect(0, 0, w, h)
 
     // Dots
-    ctx.fillStyle = DOT_COLOR
+    ctx.fillStyle = colors.dot
     for (const a of ancestors) {
       const x = lngToX(a.lng, w)
       const y = latToY(a.lat, w, h)
@@ -91,7 +96,7 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
 
     // Viewport rectangle
     if (viewport) {
-      ctx.strokeStyle = VIEWPORT_COLOR
+      ctx.strokeStyle = colors.viewport
       ctx.lineWidth = isMobile && !expanded ? 1 : 1.5
       const x1 = lngToX(viewport.west, w)
       const y1 = latToY(viewport.north, w, h)
@@ -101,7 +106,7 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
       const ry = Math.min(y1, y2)
       ctx.strokeRect(rx, ry, Math.abs(x2 - x1), Math.abs(y2 - y1))
     }
-  }, [ancestors, viewport, w, h, dotR, isMobile, expanded])
+  }, [ancestors, viewport, w, h, dotR, isMobile, expanded, colors])
 
   const handleClick = useCallback(
     (e) => {
@@ -152,7 +157,7 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
         width: w,
         height: h,
         borderRadius: isMobile && !expanded ? 6 : 8,
-        border: '1px solid rgba(255,255,255,0.2)',
+        border: `1px solid ${colors.border}`,
         cursor: isMobile && !expanded ? 'pointer' : 'crosshair',
         zIndex: 10,
         transition: 'width 0.2s ease, height 0.2s ease',

@@ -4,69 +4,74 @@ import StatsOverlay from './StatsOverlay'
 import MiniMap from './MiniMap'
 import AncestorSidebar from './AncestorSidebar'
 import { MobileSheet, DesktopPopup } from './AncestorSheet'
+import { useTheme } from '../ThemeContext'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
-const clusterLayer = {
-  id: 'clusters',
-  type: 'circle',
-  source: 'ancestors',
-  filter: ['has', 'point_count'],
-  paint: {
-    'circle-color': '#f59e0b',
-    'circle-radius': ['step', ['get', 'point_count'], 20, 5, 30, 10, 40],
-    'circle-opacity': 0.8,
-  },
-}
+function makeLayers(isDark) {
+  const clusterLayer = {
+    id: 'clusters',
+    type: 'circle',
+    source: 'ancestors',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#f59e0b',
+      'circle-radius': ['step', ['get', 'point_count'], 20, 5, 30, 10, 40],
+      'circle-opacity': 0.8,
+    },
+  }
 
-const clusterCountLayer = {
-  id: 'cluster-count',
-  type: 'symbol',
-  source: 'ancestors',
-  filter: ['has', 'point_count'],
-  layout: {
-    'text-field': '{point_count_abbreviated}',
-    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-    'text-size': 14,
-  },
-  paint: {
-    'text-color': '#1f2937',
-  },
-}
+  const clusterCountLayer = {
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'ancestors',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size': 14,
+    },
+    paint: {
+      'text-color': isDark ? '#1f2937' : '#1f2937',
+    },
+  }
 
-const unclusteredPointLayer = {
-  id: 'unclustered-point',
-  type: 'circle',
-  source: 'ancestors',
-  filter: ['!', ['has', 'point_count']],
-  paint: {
-    'circle-color': '#f59e0b',
-    'circle-radius': 8,
-    'circle-stroke-width': 2,
-    'circle-stroke-color': '#fff',
-  },
-}
+  const unclusteredPointLayer = {
+    id: 'unclustered-point',
+    type: 'circle',
+    source: 'ancestors',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': '#f59e0b',
+      'circle-radius': 8,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': isDark ? '#fff' : '#fff',
+    },
+  }
 
-const unclusteredLabelLayer = {
-  id: 'unclustered-label',
-  type: 'symbol',
-  source: 'ancestors',
-  filter: ['!', ['has', 'point_count']],
-  layout: {
-    'text-field': ['get', 'name'],
-    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
-    'text-size': 12,
-    'text-anchor': 'left',
-    'text-offset': [1.2, 0],
-    'text-allow-overlap': true,
-    'text-optional': true,
-    'text-max-width': 12,
-  },
-  paint: {
-    'text-color': '#e5e7eb',
-    'text-halo-color': 'rgba(0, 0, 0, 0.8)',
-    'text-halo-width': 1.5,
-  },
+  const unclusteredLabelLayer = {
+    id: 'unclustered-label',
+    type: 'symbol',
+    source: 'ancestors',
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+      'text-size': 12,
+      'text-anchor': 'left',
+      'text-offset': [1.2, 0],
+      'text-allow-overlap': true,
+      'text-optional': true,
+      'text-max-width': 12,
+    },
+    paint: {
+      'text-color': isDark ? '#e5e7eb' : '#1f2937',
+      'text-halo-color': isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+      'text-halo-width': 1.5,
+    },
+  }
+
+  return { clusterLayer, clusterCountLayer, unclusteredPointLayer, unclusteredLabelLayer }
 }
 
 function useIsMobile() {
@@ -90,6 +95,14 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
   const [popupPos, setPopupPos] = useState(null)
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+
+  const mapStyle = isDark
+    ? 'mapbox://styles/mapbox/dark-v11'
+    : 'mapbox://styles/mapbox/light-v11'
+
+  const layers = useMemo(() => makeLayers(isDark), [isDark])
 
   const ancestorLookup = useMemo(() => {
     const lookup = new globalThis.Map()
@@ -98,10 +111,6 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
   }, [ancestors])
 
   const geojson = useMemo(() => {
-    // Stack co-located points vertically so they don't overlap into
-    // one dot. Points within ~1km are grouped together and spread
-    // along the latitude axis with ~3km spacing — enough that dots
-    // (20px diameter) don't visually overlap at typical zoom levels.
     const STEP_LAT = 0.03
     const coordKey = (a) => `${a.lng.toFixed(2)},${a.lat.toFixed(2)}`
     const groups = new globalThis.Map()
@@ -113,7 +122,6 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
 
     const features = []
     for (const group of groups.values()) {
-      // Center the stack so the midpoint is at the original location
       const offsetStart = -((group.length - 1) / 2) * STEP_LAT
       group.forEach((a, i) => {
         features.push({
@@ -132,12 +140,10 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
 
   const initialView = useMemo(() => {
     if (ancestors.length === 0) return undefined
-    // Center on the root person (generation 0) if they have coordinates
     const root = ancestors.find((a) => a.generation === 0)
     if (root) {
       return { center: { longitude: root.lng, latitude: root.lat, zoom: 5 } }
     }
-    // Fallback: fit bounds around all ancestors
     const lngs = ancestors.map((a) => a.lng)
     const lats = ancestors.map((a) => a.lat)
     return {
@@ -170,10 +176,8 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
       const mapWrapper = mapRef.current
       if (!mapWrapper) return
 
-      // Get the raw Mapbox GL map instance for direct API access
       const map = mapWrapper.getMap ? mapWrapper.getMap() : mapWrapper
 
-      // Check for cluster clicks
       const clusterFeatures = map.queryRenderedFeatures(e.point, {
         layers: ['clusters'],
       })
@@ -187,7 +191,6 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
             zoom,
           })
         }
-        // Handle both promise-based and callback-based API
         if (result && typeof result.then === 'function') {
           result.then(handleZoom).catch(() => {})
         } else {
@@ -198,7 +201,6 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
         return
       }
 
-      // Check for point clicks
       const pointFeatures = map.queryRenderedFeatures(e.point, {
         layers: ['unclustered-point'],
       })
@@ -213,7 +215,6 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
         return
       }
 
-      // Click on empty area
       setSelected(null)
     },
     [ancestorLookup, flyTo]
@@ -251,6 +252,26 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
         onViewAll={onViewAll}
       />
 
+      {/* Theme toggle – bottom-right, above the minimap on mobile */}
+      <button
+        onClick={toggleTheme}
+        className={`absolute z-20 p-2.5 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm
+                   text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors
+                   border border-gray-200 dark:border-gray-700
+                   bottom-6 left-4`}
+        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDark ? (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+          </svg>
+        )}
+      </button>
+
       <MapGL
         ref={mapRef}
         initialViewState={
@@ -261,7 +282,7 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
               : { longitude: 0, latitude: 30, zoom: 2 }
         }
         style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/dark-v11"
+        mapStyle={mapStyle}
         mapboxAccessToken={MAPBOX_TOKEN}
         onClick={handleClick}
         interactiveLayerIds={['clusters', 'unclustered-point']}
@@ -275,10 +296,10 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
           clusterMaxZoom={6}
           clusterRadius={30}
         >
-          <Layer {...clusterLayer} />
-          <Layer {...clusterCountLayer} />
-          <Layer {...unclusteredPointLayer} />
-          <Layer {...unclusteredLabelLayer} />
+          <Layer {...layers.clusterLayer} />
+          <Layer {...layers.clusterCountLayer} />
+          <Layer {...layers.unclusteredPointLayer} />
+          <Layer {...layers.unclusteredLabelLayer} />
         </Source>
       </MapGL>
 

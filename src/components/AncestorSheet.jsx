@@ -13,17 +13,17 @@ function AncestorDetail({ ancestor, onNavigate }) {
           className="w-24 h-24 rounded-full object-cover mx-auto"
         />
       )}
-      <h2 className="text-xl font-semibold text-white text-center">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white text-center">
         {ancestor.name}
       </h2>
       {ancestor.relationship && (
-        <p className="text-sm text-amber-400/80 text-center -mt-2">{ancestor.relationship}</p>
+        <p className="text-sm text-amber-500/80 dark:text-amber-400/80 text-center -mt-2">{ancestor.relationship}</p>
       )}
       <div className="space-y-2 text-sm">
         {ancestor.birthDate && (
           <div className="flex justify-between">
             <span className="text-gray-500">Born</span>
-            <span className="text-gray-300">
+            <span className="text-gray-700 dark:text-gray-300">
               {ancestor.birthDate}
               {ancestor.birthPlace && `, ${ancestor.birthPlace}`}
             </span>
@@ -32,13 +32,13 @@ function AncestorDetail({ ancestor, onNavigate }) {
         {!ancestor.birthDate && ancestor.birthPlace && (
           <div className="flex justify-between">
             <span className="text-gray-500">Birthplace</span>
-            <span className="text-gray-300">{ancestor.birthPlace}</span>
+            <span className="text-gray-700 dark:text-gray-300">{ancestor.birthPlace}</span>
           </div>
         )}
         {(ancestor.deathDate || ancestor.deathPlace) && (
           <div className="flex justify-between">
             <span className="text-gray-500">Died</span>
-            <span className="text-gray-300">
+            <span className="text-gray-700 dark:text-gray-300">
               {ancestor.deathDate || ''}
               {ancestor.deathPlace
                 ? `${ancestor.deathDate ? ', ' : ''}${ancestor.deathPlace}`
@@ -57,8 +57,8 @@ function AncestorDetail({ ancestor, onNavigate }) {
               <button
                 key={p.id}
                 onClick={() => onNavigate(p.id)}
-                className="block w-full text-left text-amber-400 hover:text-amber-300
-                           text-sm py-1.5 px-3 rounded-lg hover:bg-gray-800/50 transition-colors
+                className="block w-full text-left text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300
+                           text-sm py-1.5 px-3 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors
                            min-h-[44px] flex items-center"
               >
                 {p.name}
@@ -77,8 +77,8 @@ function AncestorDetail({ ancestor, onNavigate }) {
               <button
                 key={c.id}
                 onClick={() => onNavigate(c.id)}
-                className="block w-full text-left text-amber-400 hover:text-amber-300
-                           text-sm py-1.5 px-3 rounded-lg hover:bg-gray-800/50 transition-colors
+                className="block w-full text-left text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300
+                           text-sm py-1.5 px-3 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors
                            min-h-[44px] flex items-center"
               >
                 {c.name}
@@ -97,8 +97,8 @@ export function MobileSheet({ ancestor, open, onClose, onNavigate }) {
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
-          <div className="bg-gray-900 rounded-t-2xl p-6 pb-8 max-h-[85vh] overflow-y-auto">
-            <div className="w-12 h-1.5 bg-gray-700 rounded-full mx-auto mb-6" />
+          <div className="bg-white dark:bg-gray-900 rounded-t-2xl p-6 pb-8 max-h-[85vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-6" />
             <AncestorDetail ancestor={ancestor} onNavigate={onNavigate} />
           </div>
         </Drawer.Content>
@@ -116,12 +116,12 @@ export function DesktopPopup({ ancestor, position, onClose, onNavigate }) {
 
   return (
     <div
-      className="absolute z-30 w-72 bg-gray-900 rounded-xl shadow-2xl border border-gray-800 p-5"
+      className="absolute z-30 w-72 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 p-5"
       style={style}
     >
       <button
         onClick={onClose}
-        className="absolute top-3 right-3 text-gray-500 hover:text-white
+        className="absolute top-3 right-3 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white
                    w-6 h-6 flex items-center justify-center"
       >
         <svg

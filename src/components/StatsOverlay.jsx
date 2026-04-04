@@ -8,8 +8,8 @@ export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, si
 
   return (
     <div className={`absolute top-4 right-4 z-10 flex items-start justify-between pointer-events-none transition-[left] duration-300 ${sidebarOpen ? 'left-[304px]' : 'left-16'}`}>
-      <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl px-4 py-3 pointer-events-auto max-w-sm">
-        <p className="text-white text-sm font-medium">
+      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-xl px-4 py-3 pointer-events-auto max-w-sm">
+        <p className="text-gray-900 dark:text-white text-sm font-medium">
           {ancestors.length} ancestor{ancestors.length !== 1 ? 's' : ''} mapped
           across {countries.size} countr{countries.size !== 1 ? 'ies' : 'y'}
         </p>
@@ -17,7 +17,7 @@ export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, si
           <>
             <button
               onClick={() => setShowUnmapped(!showUnmapped)}
-              className="text-gray-400 text-xs mt-1 hover:text-gray-300 transition-colors"
+              className="text-gray-500 dark:text-gray-400 text-xs mt-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             >
               {totalUnmapped} not mapped {showUnmapped ? '▲' : '▼'}
             </button>
@@ -33,7 +33,7 @@ export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, si
                         <li key={a.id}>
                           <button
                             onClick={() => onSelectUnmapped(a)}
-                            className="text-xs text-amber-400 hover:text-amber-300 transition-colors text-left"
+                            className="text-xs text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors text-left"
                           >
                             {a.name}
                           </button>
@@ -52,11 +52,11 @@ export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, si
                         <li key={a.id}>
                           <button
                             onClick={() => onSelectUnmapped(a)}
-                            className="text-xs text-amber-400 hover:text-amber-300 transition-colors text-left"
+                            className="text-xs text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors text-left"
                           >
                             {a.name}
                           </button>
-                          <span className="text-[10px] text-gray-600 ml-1">
+                          <span className="text-[10px] text-gray-400 dark:text-gray-600 ml-1">
                             {a.birthPlace}
                           </span>
                         </li>

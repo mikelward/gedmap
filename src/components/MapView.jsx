@@ -252,13 +252,13 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
         onViewAll={onViewAll}
       />
 
-      {/* Theme toggle – bottom-right, above the minimap on mobile */}
+      {/* Theme toggle – top-right corner */}
       <button
         onClick={toggleTheme}
         className={`absolute z-20 p-2.5 rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm
                    text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors
                    border border-gray-200 dark:border-gray-700
-                   bottom-6 left-4`}
+                   top-4 right-4`}
         title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {isDark ? (

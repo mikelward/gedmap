@@ -18,7 +18,7 @@ Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces o
 | GEDCOM parsing | Custom parser | `parse-gedcom` npm crashes on CONC/CONT lines with pointer values |
 | Styling | Tailwind CSS 4.x (@tailwindcss/vite plugin) | Utility-first, no separate CSS files |
 | Bottom sheet | vaul 1.x | Native-feeling iOS/Android drawer |
-| Geocoding | HERE Geocoding API (primary), Mapbox v6 (fallback) | HERE handles historical place names well; Mapbox as fallback |
+| Geocoding | HERE Geocoding API | Handles historical place names well |
 
 ---
 
@@ -38,7 +38,7 @@ src/
 │   └── StatsOverlay.jsx       # "X ancestors across Y countries"
 └── utils/
     ├── parseGedcom.js         # GEDCOM tokenizer, tree builder, ancestor filter
-    └── geocode.js             # HERE + Mapbox geocoding with in-memory cache
+    └── geocode.js             # HERE geocoding with in-memory cache
 ```
 
 ---
@@ -123,9 +123,9 @@ Only ancestors with a `birthPlace` are included in the final output. Parent/chil
 
 ### API
 
-Mapbox Geocoding v6 forward endpoint:
+HERE Geocoding API forward endpoint:
 ```
-GET https://api.mapbox.com/search/geocode/v6/forward?q={place}&access_token={token}&limit=1
+GET https://geocode.search.hereapi.com/v1/geocode?q={place}&apiKey={key}&limit=5
 ```
 
 ### Caching
@@ -135,15 +135,15 @@ In-memory `Map` keyed by place string. Caches both hits (coordinates + country) 
 ### Country Extraction
 
 Priority order:
-1. `feature.properties.context.country.name` from Mapbox response
+1. `feature.properties.context.country.name` from geocoding response
 2. Last comma-separated segment of the place string
 3. `"Unknown"`
 
 ### Broad Result Fallback
 
-GEDCOM place strings are hierarchical (e.g. "New Tiers, Mount Lofty, South Australia, Australia"). Mapbox often doesn't know the most local part and returns a broad region centroid instead.
+GEDCOM place strings are hierarchical (e.g. "New Tiers, Mount Lofty, South Australia, Australia"). The geocoder often doesn't know the most local part and returns a broad region centroid instead.
 
-Strategy: try all query variations (full string, then dropping the most-local part each time). Rank results by Mapbox `feature_type` specificity and pick the most specific one:
+Strategy: try all query variations (full string, then dropping the most-local part each time). Rank results by `feature_type` specificity and pick the most specific one:
 
 ```
 address(0) > street(1) > neighborhood(2) > locality(3) > place(4) > district(6) > region(7) > country(8)
@@ -164,7 +164,7 @@ Sequential (one at a time), not parallel. Simpler and enables smooth progress up
 
 Two reasons an ancestor may not appear on the map:
 1. **No birth place in GEDCOM** — detected during parsing, reason: "No birth place in file"
-2. **Geocoding failed** — has a place string but Mapbox couldn't resolve it, reason: `Could not locate "place name"`
+2. **Geocoding failed** — has a place string but the geocoder couldn't resolve it, reason: `Could not locate "place name"`
 
 Both are tracked with full ancestor data. The stats overlay shows "X not mapped ▼" — expanding it reveals two grouped lists:
 
@@ -274,7 +274,7 @@ VITE_MAPBOX_TOKEN=<public token>
 VITE_HERE_API_KEY=<HERE API key>
 ```
 
-Mapbox public tokens are safe to expose client-side. HERE requires a free account at developer.here.com (250k requests/month free tier). Both are set in `.env.local` (gitignored via `*.local` pattern). HERE is the primary geocoder — it handles historical place names (e.g. "Ganth, Fejer, Austria-Hungary" → Gánt, Hungary) that Mapbox cannot resolve. Mapbox is used as a fallback if HERE is not configured.
+Mapbox public tokens are safe to expose client-side. HERE requires a free account at developer.here.com (250k requests/month free tier). Both are set in `.env.local` (gitignored via `*.local` pattern). HERE is the geocoder — it handles historical place names well (e.g. "Ganth, Fejer, Austria-Hungary" → Gánt, Hungary).
 
 ---
 

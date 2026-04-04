@@ -1,9 +1,10 @@
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY
 
 const cache = new Map()
 
-// Mapbox specificity by feature_type — lower = more specific.
-export const MAPBOX_SPECIFICITY = {
+// Specificity by feature_type — lower = more specific.
+export const SPECIFICITY = {
   address: 0,
   street: 1,
   neighborhood: 2,
@@ -15,139 +16,64 @@ export const MAPBOX_SPECIFICITY = {
   country: 8,
 }
 
-// Common country name → ISO 3166-1 alpha-2 code mapping for Mapbox filtering.
-// Includes historical names that appear in GEDCOM files.
-export const COUNTRY_CODES = {
-  'australia': 'AU',
-  'united states': 'US',
-  'usa': 'US',
-  'united states of america': 'US',
-  'united kingdom': 'GB',
-  'england': 'GB',
-  'scotland': 'GB',
-  'wales': 'GB',
-  'northern ireland': 'GB',
-  'ireland': 'IE',
-  'canada': 'CA',
-  'new zealand': 'NZ',
-  'south africa': 'ZA',
-  'germany': 'DE',
-  'deutschland': 'DE',
-  'prussia': 'DE',
-  'bavaria': 'DE',
-  'saxony': 'DE',
-  'france': 'FR',
-  'italy': 'IT',
-  'spain': 'ES',
-  'netherlands': 'NL',
-  'holland': 'NL',
-  'belgium': 'BE',
-  'switzerland': 'CH',
-  'austria': 'AT',
-  'austria-hungary': 'AT',
-  'poland': 'PL',
-  'czech republic': 'CZ',
-  'czechia': 'CZ',
-  'bohemia': 'CZ',
-  'moravia': 'CZ',
-  'slovakia': 'SK',
-  'hungary': 'HU',
-  'romania': 'RO',
-  'russia': 'RU',
-  'ukraine': 'UA',
-  'sweden': 'SE',
-  'norway': 'NO',
-  'denmark': 'DK',
-  'finland': 'FI',
-  'india': 'IN',
-  'china': 'CN',
-  'japan': 'JP',
-  'mexico': 'MX',
-  'brazil': 'BR',
-  'argentina': 'AR',
-  'chile': 'CL',
-  'colombia': 'CO',
-  'peru': 'PE',
-  'portugal': 'PT',
-  'greece': 'GR',
-  'turkey': 'TR',
-  'egypt': 'EG',
-  'nigeria': 'NG',
-  'kenya': 'KE',
-  'ghana': 'GH',
-  'philippines': 'PH',
-  'indonesia': 'ID',
-  'malaysia': 'MY',
-  'singapore': 'SG',
-  'vietnam': 'VN',
-  'thailand': 'TH',
-  'korea': 'KR',
-  'south korea': 'KR',
-  'taiwan': 'TW',
-  'israel': 'IL',
-  'palestine': 'PS',
-  'lebanon': 'LB',
-  'syria': 'SY',
-  'iraq': 'IQ',
-  'iran': 'IR',
-  'pakistan': 'PK',
-  'bangladesh': 'BD',
-  'sri lanka': 'LK',
-  'nepal': 'NP',
-  'jamaica': 'JM',
-  'trinidad and tobago': 'TT',
-  'barbados': 'BB',
-  'cuba': 'CU',
-  'croatia': 'HR',
-  'serbia': 'RS',
-  'slovenia': 'SI',
-  'bosnia and herzegovina': 'BA',
-  'bosnia': 'BA',
-  'herzegovina': 'BA',
-  'montenegro': 'ME',
-  'north macedonia': 'MK',
-  'macedonia': 'MK',
-  'kosovo': 'XK',
-  'yugoslavia': 'HR',  // default to Croatia; tryMapbox also tries RS, BA, SI
-  'bulgaria': 'BG',
-  'lithuania': 'LT',
-  'latvia': 'LV',
-  'estonia': 'EE',
-  'iceland': 'IS',
-  'luxembourg': 'LU',
-  'malta': 'MT',
-  'cyprus': 'CY',
-  'albania': 'AL',
+// Map HERE resultType to a specificity feature_type.
+export function hereFeatureType(resultType) {
+  switch (resultType) {
+    case 'houseNumber':
+      return 'address'
+    case 'street':
+      return 'street'
+    case 'locality':
+      return 'place'
+    case 'administrativeArea':
+      return 'region'
+    default:
+      return 'place'
+  }
 }
 
-// Historical names that map to multiple modern countries.
-// tryMapbox will try each code in order until it gets a result.
-export const MULTI_COUNTRY_CODES = {
-  'yugoslavia': ['HR', 'RS', 'BA', 'SI', 'ME', 'MK'],
-  'austria-hungary': ['AT', 'HU', 'CZ', 'HR', 'SK', 'BA'],
-  'prussia': ['DE', 'PL', 'RU'],
-  'bohemia': ['CZ'],
-  'moravia': ['CZ'],
-}
-
-export function countryCode(name) {
-  if (!name) return null
-  return COUNTRY_CODES[name.toLowerCase().trim()] || null
-}
-
-export function multiCountryCodes(name) {
-  if (!name) return null
-  return MULTI_COUNTRY_CODES[name.toLowerCase().trim()] || null
+// Query HERE Geocoding API. Returns features in a common format.
+async function hereSearch(query) {
+  if (!HERE_API_KEY) return []
+  const params = new URLSearchParams({
+    q: query,
+    limit: '5',
+    apiKey: HERE_API_KEY,
+  })
+  const url = `https://geocode.search.hereapi.com/v1/geocode?${params}`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.items || []).map((item) => ({
+      geometry: {
+        type: 'Point',
+        coordinates: [item.position.lng, item.position.lat],
+      },
+      properties: {
+        name: item.title,
+        full_address: item.address?.label,
+        feature_type: hereFeatureType(item.resultType),
+        context: {
+          country: {
+            name: item.address?.countryName,
+            country_code: item.address?.countryCode,
+          },
+        },
+      },
+    }))
+  } catch {
+    return []
+  }
 }
 
 // Query Mapbox geocoding v6. Returns array of features.
-async function mapboxSearch(query, { country } = {}) {
+async function mapboxSearch(query) {
   const params = new URLSearchParams({
     q: query,
     access_token: MAPBOX_TOKEN,
     limit: '5',
   })
-  if (country) params.set('country', country)
   const url = `https://api.mapbox.com/search/geocode/v6/forward?${params}`
   try {
     const res = await fetch(url)
@@ -159,25 +85,13 @@ async function mapboxSearch(query, { country } = {}) {
   }
 }
 
-// Pick the best feature from a list. Mapbox returns results ranked by
-// relevance, so we trust the first result and just read its specificity.
+// Pick the best feature from a list — trusts the API's relevance order
+// and just reads specificity from the first result.
 export function pickBestFeature(features) {
   if (features.length === 0) return null
   const best = features[0]
-  const specificity = MAPBOX_SPECIFICITY[best.properties?.feature_type] ?? 4
+  const specificity = SPECIFICITY[best.properties?.feature_type] ?? 4
   return { feature: best, specificity }
-}
-
-// Filter features to only those matching one of the given country codes.
-export function filterByCountry(features, codes) {
-  if (!codes || codes.length === 0) return features
-  const upper = codes.map((c) => c.toUpperCase())
-  return features.filter((f) => {
-    const code = f.properties?.context?.country?.country_code?.toUpperCase()
-    // Keep features whose country matches, or where country_code is missing
-    // (so we don't discard results from APIs that omit it).
-    return !code || upper.includes(code)
-  })
 }
 
 // Split a GEDCOM place string into parts for progressive querying.
@@ -187,34 +101,15 @@ export function splitPlace(place) {
   return { parts, spaceParts }
 }
 
-// Core geocoding logic, takes a searchFn(query, {country?}) → features[]
-// so it can be tested without hitting the network.
+// Core geocoding logic: progressive query shortening.
+// searchFn(query) → features[]
 export async function tryGeocode(parts, searchFn) {
-  const lastPart = parts[parts.length - 1]
-  const multiCodes = multiCountryCodes(lastPart)
-  const singleCode = countryCode(lastPart)
-  const countryCodesToTry = multiCodes || (singleCode ? [singleCode] : [])
-
   let bestFeature = null
   let bestSpecificity = Infinity
 
   for (let i = 0; i < parts.length; i++) {
     const query = parts.slice(i).join(', ')
-
-    let features = []
-    for (const code of countryCodesToTry) {
-      features = await searchFn(query, { country: code })
-      if (features.length > 0) break
-    }
-    if (features.length === 0) {
-      features = await searchFn(query, {})
-      // When we know the expected country, discard results from other countries
-      // so an unfiltered query for "Gant" doesn't return Connecticut.
-      if (countryCodesToTry.length > 0) {
-        features = filterByCountry(features, countryCodesToTry)
-      }
-    }
-
+    const features = await searchFn(query)
     const pick = pickBestFeature(features)
     if (!pick) continue
 
@@ -234,9 +129,16 @@ export async function tryGeocode(parts, searchFn) {
     parts[parts.length - 1] ||
     'Unknown'
 
-  console.debug('[geocode]', parts.join(', '), '→', { lat, lng, country },
-    'type:', bestFeature.properties?.feature_type,
-    'name:', bestFeature.properties?.full_address || bestFeature.properties?.name)
+  console.debug(
+    '[geocode]',
+    parts.join(', '),
+    '→',
+    { lat, lng, country },
+    'type:',
+    bestFeature.properties?.feature_type,
+    'name:',
+    bestFeature.properties?.full_address || bestFeature.properties?.name
+  )
 
   return { lat, lng, country }
 }
@@ -246,17 +148,23 @@ async function geocodePlace(place) {
 
   const { parts, spaceParts } = splitPlace(place)
 
-  let result = await tryGeocode(parts, mapboxSearch)
-  if (!result && spaceParts) {
-    result = await tryGeocode(spaceParts, mapboxSearch)
+  // Try HERE first (handles historical place names well), fall back to Mapbox.
+  const searchFns = []
+  if (HERE_API_KEY) searchFns.push(hereSearch)
+  searchFns.push(mapboxSearch)
+
+  let result = null
+  for (const searchFn of searchFns) {
+    result = await tryGeocode(parts, searchFn)
+    if (!result && spaceParts) {
+      result = await tryGeocode(spaceParts, searchFn)
+    }
+    if (result) break
   }
 
-  if (!result) {
-    cache.set(place, null)
-    return null
-  }
-
-  const cached = { lat: result.lat, lng: result.lng, country: result.country }
+  const cached = result
+    ? { lat: result.lat, lng: result.lng, country: result.country }
+    : null
   cache.set(place, cached)
   return cached
 }

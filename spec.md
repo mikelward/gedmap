@@ -18,7 +18,7 @@ Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces o
 | GEDCOM parsing | Custom parser | `parse-gedcom` npm crashes on CONC/CONT lines with pointer values |
 | Styling | Tailwind CSS 4.x (@tailwindcss/vite plugin) | Utility-first, no separate CSS files |
 | Bottom sheet | vaul 1.x | Native-feeling iOS/Android drawer |
-| Geocoding | Mapbox Geocoding API v6 (forward) | Same provider as map, free tier sufficient |
+| Geocoding | HERE Geocoding API (primary), Mapbox v6 (fallback) | HERE handles historical place names well; Mapbox as fallback |
 
 ---
 
@@ -38,7 +38,7 @@ src/
 │   └── StatsOverlay.jsx       # "X ancestors across Y countries"
 └── utils/
     ├── parseGedcom.js         # GEDCOM tokenizer, tree builder, ancestor filter
-    └── geocode.js             # Mapbox geocoding with in-memory cache
+    └── geocode.js             # HERE + Mapbox geocoding with in-memory cache
 ```
 
 ---
@@ -271,10 +271,10 @@ All tap targets: `min-h-[44px]` for mobile accessibility.
 
 ```
 VITE_MAPBOX_TOKEN=<public token>
-VITE_GEONAMES_USERNAME=<geonames username>
+VITE_HERE_API_KEY=<HERE API key>
 ```
 
-Mapbox public tokens are safe to expose client-side. GeoNames requires a free account at geonames.org (enable free web services in account settings). Both are set in `.env.local` (gitignored via `*.local` pattern). GeoNames is optional but strongly recommended — it handles historical place names (e.g. "Prussia", "Bohemia") that Mapbox cannot resolve.
+Mapbox public tokens are safe to expose client-side. HERE requires a free account at developer.here.com (250k requests/month free tier). Both are set in `.env.local` (gitignored via `*.local` pattern). HERE is the primary geocoder — it handles historical place names (e.g. "Ganth, Fejer, Austria-Hungary" → Gánt, Hungary) that Mapbox cannot resolve. Mapbox is used as a fallback if HERE is not configured.
 
 ---
 

@@ -141,16 +141,14 @@ async function geocodePlace(place) {
   return cached
 }
 
-export async function geocodeAncestors(ancestors, onProgress) {
+export async function geocodeAncestors(ancestors, onProgress, { concurrency = 5 } = {}) {
   const geocoded = []
   const geocodeFailed = []
+  let completed = 0
 
-  for (let i = 0; i < ancestors.length; i++) {
-    const ancestor = ancestors[i]
-
+  async function processOne(ancestor) {
     try {
       const coords = await geocodePlace(ancestor.birthPlace)
-
       if (coords) {
         geocoded.push({
           ...ancestor,
@@ -164,9 +162,20 @@ export async function geocodeAncestors(ancestors, onProgress) {
     } catch {
       geocodeFailed.push(ancestor)
     }
-
-    onProgress(i + 1)
+    completed++
+    onProgress(completed)
   }
+
+  // Process ancestors with bounded concurrency
+  const executing = new Set()
+  for (const ancestor of ancestors) {
+    const p = processOne(ancestor).then(() => executing.delete(p))
+    executing.add(p)
+    if (executing.size >= concurrency) {
+      await Promise.race(executing)
+    }
+  }
+  await Promise.all(executing)
 
   return { geocoded, geocodeFailed }
 }

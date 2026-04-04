@@ -48,8 +48,8 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
     return (
       <button
         onClick={() => setOpen(true)}
-        className="absolute top-4 left-4 z-20 bg-gray-900/80 backdrop-blur-sm
-                   rounded-xl px-3 py-3 text-gray-400 hover:text-white transition-colors"
+        className="absolute top-4 left-4 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm
+                   rounded-xl px-3 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         title="Show ancestor list"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -60,9 +60,9 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
   }
 
   return (
-    <div className="absolute top-0 left-0 bottom-0 z-20 w-72 bg-gray-900/95 backdrop-blur-sm
-                    border-r border-gray-800 flex flex-col">
-      <div className="p-3 border-b border-gray-800 flex gap-2">
+    <div className="absolute top-0 left-0 bottom-0 z-20 w-72 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm
+                    border-r border-gray-200 dark:border-gray-800 flex flex-col">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-800 flex gap-2">
         <div className="flex-1 relative">
           <svg
             className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
@@ -76,14 +76,14 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
             placeholder="Search ancestors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-8 pr-3 py-2
-                       placeholder-gray-500 border border-gray-700 focus:border-amber-400
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white text-sm rounded-lg pl-8 pr-3 py-2
+                       placeholder-gray-400 dark:placeholder-gray-500 border border-gray-300 dark:border-gray-700 focus:border-amber-400
                        focus:outline-none transition-colors"
           />
         </div>
         <button
           onClick={() => setOpen(false)}
-          className="text-gray-500 hover:text-white transition-colors px-1"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors px-1"
           title="Hide list"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -93,12 +93,12 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
       </div>
 
       {(onViewAll || onViewAs) && (
-        <div className="px-3 py-2 border-b border-gray-800 flex gap-2">
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex gap-2">
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="flex-1 text-[11px] text-gray-400 hover:text-white bg-gray-800
-                         hover:bg-gray-700 rounded-lg py-1.5 transition-colors"
+              className="flex-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800
+                         hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg py-1.5 transition-colors"
             >
               View all
             </button>
@@ -106,8 +106,8 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
           {onViewAs && (
             <button
               onClick={onViewAs}
-              className="flex-1 text-[11px] text-gray-400 hover:text-white bg-gray-800
-                         hover:bg-gray-700 rounded-lg py-1.5 transition-colors"
+              className="flex-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800
+                         hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg py-1.5 transition-colors"
             >
               View as…
             </button>
@@ -122,7 +122,7 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
         {grouped.map(([gen, people]) => (
           <div key={gen}>
             <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider
-                           px-3 pt-3 pb-1 sticky top-0 bg-gray-900/95">
+                           px-3 pt-3 pb-1 sticky top-0 bg-white/95 dark:bg-gray-900/95">
               {GEN_LABELS[gen] || `Generation ${gen}`}
             </h3>
             {people.map((a) => (
@@ -130,20 +130,20 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
                 key={a.id}
                 onClick={() => onSelect(a)}
                 className={`w-full text-left px-3 py-2 text-sm transition-colors
-                  hover:bg-gray-800/60 flex items-center justify-between gap-2
-                  ${selectedId === a.id ? 'bg-gray-800/80 text-white' : 'text-gray-300'}`}
+                  hover:bg-gray-100/60 dark:hover:bg-gray-800/60 flex items-center justify-between gap-2
+                  ${selectedId === a.id ? 'bg-gray-100/80 dark:bg-gray-800/80 text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}
               >
                 <div className="min-w-0">
                   <div className="truncate">{a.name}</div>
                   {a.relationship && (
-                    <div className="text-[11px] text-amber-400/60 truncate">{a.relationship}</div>
+                    <div className="text-[11px] text-amber-500/60 dark:text-amber-400/60 truncate">{a.relationship}</div>
                   )}
                   {a.birthPlace && (
                     <div className="text-[11px] text-gray-500 truncate">{a.birthPlace}</div>
                   )}
                 </div>
                 {!a._mapped && (
-                  <span className="text-[10px] text-gray-600 shrink-0">{a._reason}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-600 shrink-0">{a._reason}</span>
                 )}
               </button>
             ))}
@@ -151,8 +151,8 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
         ))}
       </div>
 
-      <div className="p-2 border-t border-gray-800 text-center">
-        <span className="text-[11px] text-gray-600">
+      <div className="p-2 border-t border-gray-200 dark:border-gray-800 text-center">
+        <span className="text-[11px] text-gray-400 dark:text-gray-600">
           {filtered.length} of {allAncestors.length} people
         </span>
       </div>

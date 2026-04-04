@@ -1,4 +1,3 @@
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY
 
 const cache = new Map()
@@ -67,24 +66,6 @@ async function hereSearch(query) {
   }
 }
 
-// Query Mapbox geocoding v6. Returns array of features.
-async function mapboxSearch(query) {
-  const params = new URLSearchParams({
-    q: query,
-    access_token: MAPBOX_TOKEN,
-    limit: '5',
-  })
-  const url = `https://api.mapbox.com/search/geocode/v6/forward?${params}`
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.features || []
-  } catch {
-    return []
-  }
-}
-
 // Pick the best feature from a list — trusts the API's relevance order
 // and just reads specificity from the first result.
 export function pickBestFeature(features) {
@@ -148,18 +129,9 @@ async function geocodePlace(place) {
 
   const { parts, spaceParts } = splitPlace(place)
 
-  // Try HERE first (handles historical place names well), fall back to Mapbox.
-  const searchFns = []
-  if (HERE_API_KEY) searchFns.push(hereSearch)
-  searchFns.push(mapboxSearch)
-
-  let result = null
-  for (const searchFn of searchFns) {
-    result = await tryGeocode(parts, searchFn)
-    if (!result && spaceParts) {
-      result = await tryGeocode(spaceParts, searchFn)
-    }
-    if (result) break
+  let result = await tryGeocode(parts, hereSearch)
+  if (!result && spaceParts) {
+    result = await tryGeocode(spaceParts, hereSearch)
   }
 
   const cached = result

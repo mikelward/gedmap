@@ -3,6 +3,7 @@ import {
   countryCode,
   multiCountryCodes,
   pickBestFeature,
+  filterByCountry,
   splitPlace,
   tryGeocode,
   COUNTRY_CODES,
@@ -11,13 +12,13 @@ import {
 
 // --- Helper to build Mapbox v6 feature fixtures ---
 
-function feature(name, type, coords, countryName) {
+function feature(name, type, coords, countryName, countryCodeVal) {
   return {
     geometry: { type: 'Point', coordinates: coords },
     properties: {
       name,
       feature_type: type,
-      context: { country: { name: countryName } },
+      context: { country: { name: countryName, country_code: countryCodeVal } },
     },
   }
 }
@@ -97,16 +98,40 @@ const FIXTURES = {
   'Krakow, Austria-Hungary|SK': [],
   'Krakow, Austria-Hungary|BA': [],
   'Krakow, Austria-Hungary|': [
-    feature('Kraków', 'place', [19.9445, 50.0647], 'Poland'),
+    feature('Kraków', 'place', [19.9445, 50.0647], 'Poland', 'PL'),
   ],
   'Austria-Hungary|AT': [
-    feature('Austria', 'country', [14.5501, 47.5162], 'Austria'),
+    feature('Austria', 'country', [14.5501, 47.5162], 'Austria', 'AT'),
   ],
 
   // Ambiguous: "Portland" with no country — should NOT end up in wrong country
   'Portland|': [
     feature('Portland', 'place', [-122.6765, 45.5231], 'United States'),
     feature('Portland', 'place', [-2.4476, 50.5455], 'United Kingdom'),
+  ],
+
+  // Bug reproduction: "Gant, Fejer, Hungary" unfiltered returns US result
+  'Gant, Fejer, Hungary|HU': [],
+  'Gant, Fejer, Hungary|': [
+    feature('Gant St', 'street', [-72.6, 42.1], 'United States', 'US'),
+  ],
+  'Fejer, Hungary|HU': [
+    feature('Fejér', 'region', [18.4, 47.1], 'Hungary', 'HU'),
+  ],
+  'Hungary|HU': [
+    feature('Hungary', 'country', [19.5, 47.2], 'Hungary', 'HU'),
+  ],
+
+  // Bug reproduction: "Naracoorte, South Australia, Australia" unfiltered returns Cuba
+  'Naracoorte, South Australia, Australia|AU': [],
+  'Naracoorte, South Australia, Australia|': [
+    feature('Naracoorte', 'locality', [-81.2, 22.4], 'Cuba', 'CU'),
+  ],
+  'South Australia, Australia|AU': [
+    feature('South Australia', 'region', [135.0, -30.0], 'Australia', 'AU'),
+  ],
+  'Australia|AU': [
+    feature('Australia', 'country', [133.8, -25.3], 'Australia', 'AU'),
   ],
 }
 
@@ -260,36 +285,55 @@ describe('pickBestFeature', () => {
     expect(pickBestFeature([])).toBeNull()
   })
 
-  it('returns the only feature when given one', () => {
-    const f = feature('X', 'place', [0, 0], 'Z')
-    const result = pickBestFeature([f])
-    expect(result.feature).toBe(f)
+  it('returns the first feature (trusts Mapbox relevance order)', () => {
+    const place = feature('A', 'place', [0, 0], 'Z')
+    const locality = feature('B', 'locality', [0, 0], 'Z')
+    const result = pickBestFeature([place, locality])
+    expect(result.feature).toBe(place)
     expect(result.specificity).toBe(4)
   })
 
-  it('prefers more specific feature types', () => {
+  it('reads specificity from the first feature', () => {
     const locality = feature('A', 'locality', [0, 0], 'Z')
-    const region = feature('B', 'region', [0, 0], 'Z')
-    const country = feature('C', 'country', [0, 0], 'Z')
-    const result = pickBestFeature([region, country, locality])
-    expect(result.feature).toBe(locality)
+    const result = pickBestFeature([locality])
     expect(result.specificity).toBe(3)
-  })
-
-  it('prefers address over place', () => {
-    const address = feature('A', 'address', [0, 0], 'Z')
-    const place = feature('B', 'place', [0, 0], 'Z')
-    const result = pickBestFeature([place, address])
-    expect(result.feature).toBe(address)
-    expect(result.specificity).toBe(0)
   })
 
   it('handles unknown feature types with default specificity', () => {
     const unknown = feature('A', 'something_new', [0, 0], 'Z')
-    const region = feature('B', 'region', [0, 0], 'Z')
-    const result = pickBestFeature([unknown, region])
-    expect(result.feature).toBe(unknown)
+    const result = pickBestFeature([unknown])
     expect(result.specificity).toBe(4)
+  })
+
+})
+
+// --- filterByCountry ---
+
+describe('filterByCountry', () => {
+  it('removes features from non-matching countries', () => {
+    const cubaPlace = feature('Gant', 'locality', [-81.2, 22.4], 'Cuba', 'CU')
+    const huPlace = feature('Gánt', 'place', [18.4, 47.4], 'Hungary', 'HU')
+    const result = filterByCountry([cubaPlace, huPlace], ['HU'])
+    expect(result).toEqual([huPlace])
+  })
+
+  it('keeps features with missing country_code', () => {
+    const noCode = feature('X', 'place', [0, 0], 'Unknown')
+    const result = filterByCountry([noCode], ['AU'])
+    expect(result).toEqual([noCode])
+  })
+
+  it('accepts any of the given codes', () => {
+    const atPlace = feature('Vienna', 'place', [16.4, 48.2], 'Austria', 'AT')
+    const huPlace = feature('Budapest', 'place', [19.0, 47.5], 'Hungary', 'HU')
+    const usPlace = feature('Vienna', 'place', [-77.3, 38.9], 'United States', 'US')
+    const result = filterByCountry([atPlace, huPlace, usPlace], ['AT', 'HU', 'CZ'])
+    expect(result).toEqual([atPlace, huPlace])
+  })
+
+  it('returns all features when codes is empty', () => {
+    const f = feature('X', 'place', [0, 0], 'Z', 'ZZ')
+    expect(filterByCountry([f], [])).toEqual([f])
   })
 })
 
@@ -401,14 +445,16 @@ describe('tryGeocode', () => {
     expect(result.country).toBe('Czechia')
   })
 
-  it('geocodes "Krakow, Austria-Hungary" — falls back to unfiltered', async () => {
-    // Krakow doesn't match with any A-H country code, but unfiltered finds Poland
+  it('geocodes "Krakow, Austria-Hungary" — PL result filtered, falls back to Austria', async () => {
+    // Krakow doesn't match with any A-H country code. Unfiltered finds Poland
+    // but PL is not in the Austria-Hungary codes, so it's filtered out.
+    // Falls back to the broader "Austria-Hungary" query which finds Austria.
     const parts = ['Krakow', 'Austria-Hungary']
     const result = await tryGeocode(parts, mockSearch)
     expect(result).not.toBeNull()
-    expect(result.lat).toBeCloseTo(50.06, 0)
-    expect(result.lng).toBeCloseTo(19.94, 0)
-    expect(result.country).toBe('Poland')
+    expect(result.lat).toBeCloseTo(47.52, 0)
+    expect(result.lng).toBeCloseTo(14.55, 0)
+    expect(result.country).toBe('Austria')
   })
 
   it('uses country filter — England query hits GB not some random country', async () => {
@@ -443,5 +489,27 @@ describe('tryGeocode', () => {
     const parts = ['Nonexistent Place', 'Nowhere']
     const result = await tryGeocode(parts, () => Promise.resolve([]))
     expect(result).toBeNull()
+  })
+
+  it('filters out wrong-country results from unfiltered queries (Cuba bug)', async () => {
+    // "Naracoorte, South Australia, Australia" with AU returns empty,
+    // unfiltered returns Cuba — should be filtered out, fall back to South Australia.
+    const parts = ['Naracoorte', 'South Australia', 'Australia']
+    const result = await tryGeocode(parts, mockSearch)
+    expect(result).not.toBeNull()
+    expect(result.country).toBe('Australia')
+    expect(result.lat).toBeCloseTo(-30.0, 0) // South Australia region
+    expect(result.lng).toBeCloseTo(135.0, 0)
+  })
+
+  it('filters out wrong-country results from unfiltered queries (Connecticut bug)', async () => {
+    // "Gant, Fejer, Hungary" with HU returns empty,
+    // unfiltered returns US street — should be filtered out, fall back to Fejér region.
+    const parts = ['Gant', 'Fejer', 'Hungary']
+    const result = await tryGeocode(parts, mockSearch)
+    expect(result).not.toBeNull()
+    expect(result.country).toBe('Hungary')
+    expect(result.lat).toBeCloseTo(47.1, 0) // Fejér region
+    expect(result.lng).toBeCloseTo(18.4, 0)
   })
 })

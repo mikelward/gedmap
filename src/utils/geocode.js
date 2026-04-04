@@ -159,19 +159,25 @@ async function mapboxSearch(query, { country } = {}) {
   }
 }
 
-// Pick the best feature from a list, preferring more specific types.
+// Pick the best feature from a list. Mapbox returns results ranked by
+// relevance, so we trust the first result and just read its specificity.
 export function pickBestFeature(features) {
   if (features.length === 0) return null
-  let best = features[0]
-  let bestScore = MAPBOX_SPECIFICITY[best.properties?.feature_type] ?? 4
-  for (let i = 1; i < features.length; i++) {
-    const score = MAPBOX_SPECIFICITY[features[i].properties?.feature_type] ?? 4
-    if (score < bestScore) {
-      best = features[i]
-      bestScore = score
-    }
-  }
-  return { feature: best, specificity: bestScore }
+  const best = features[0]
+  const specificity = MAPBOX_SPECIFICITY[best.properties?.feature_type] ?? 4
+  return { feature: best, specificity }
+}
+
+// Filter features to only those matching one of the given country codes.
+export function filterByCountry(features, codes) {
+  if (!codes || codes.length === 0) return features
+  const upper = codes.map((c) => c.toUpperCase())
+  return features.filter((f) => {
+    const code = f.properties?.context?.country?.country_code?.toUpperCase()
+    // Keep features whose country matches, or where country_code is missing
+    // (so we don't discard results from APIs that omit it).
+    return !code || upper.includes(code)
+  })
 }
 
 // Split a GEDCOM place string into parts for progressive querying.
@@ -202,6 +208,11 @@ export async function tryGeocode(parts, searchFn) {
     }
     if (features.length === 0) {
       features = await searchFn(query, {})
+      // When we know the expected country, discard results from other countries
+      // so an unfiltered query for "Gant" doesn't return Connecticut.
+      if (countryCodesToTry.length > 0) {
+        features = filterByCountry(features, countryCodesToTry)
+      }
     }
 
     const pick = pickBestFeature(features)
@@ -222,6 +233,10 @@ export async function tryGeocode(parts, searchFn) {
     bestFeature.properties?.context?.country?.name ||
     parts[parts.length - 1] ||
     'Unknown'
+
+  console.debug('[geocode]', parts.join(', '), '→', { lat, lng, country },
+    'type:', bestFeature.properties?.feature_type,
+    'name:', bestFeature.properties?.full_address || bestFeature.properties?.name)
 
   return { lat, lng, country }
 }

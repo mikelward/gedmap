@@ -25,3 +25,6 @@ dist-ssr
 
 # GEDCOM files
 *.ged
+
+# Test coverage
+coverage

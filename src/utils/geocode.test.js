@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+
+// Set the HERE API key before geocode.js is imported so hereSearch doesn't short-circuit.
+vi.hoisted(() => {
+  import.meta.env.VITE_HERE_API_KEY = 'test-key'
+})
+
 import {
   pickBestFeature,
   splitPlace,
   tryGeocode,
   hereFeatureType,
   SPECIFICITY,
+  geocodeAncestors,
 } from './geocode.js'
 
 // --- Helper to build feature fixtures (common format for HERE + Mapbox) ---
@@ -338,5 +345,183 @@ describe('tryGeocode', () => {
     expect(result).not.toBeNull()
     // Should stop after first query since specificity (3) <= 3
     expect(calls.length).toBe(1)
+  })
+
+  it('returns country from last part when feature has no country context', async () => {
+    const searchFn = () =>
+      Promise.resolve([
+        {
+          geometry: { type: 'Point', coordinates: [10, 50] },
+          properties: { name: 'Test', feature_type: 'place' },
+        },
+      ])
+    const result = await tryGeocode(['Town', 'MyCountry'], searchFn)
+    expect(result.country).toBe('MyCountry')
+  })
+
+  it('handles empty parts array', async () => {
+    const result = await tryGeocode([], mockSearch)
+    expect(result).toBeNull()
+  })
+
+  it('handles single-part array', async () => {
+    const result = await tryGeocode(['Portland'], mockSearch)
+    expect(result).not.toBeNull()
+    expect(result.lat).toBeCloseTo(45.52, 0)
+  })
+})
+
+// --- geocodeAncestors ---
+
+describe('geocodeAncestors', () => {
+  // Mock the HERE API by intercepting fetch
+  function setupFetchMock(responseMap) {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async (url) => {
+      const u = new URL(url)
+      const query = u.searchParams.get('q')
+      const items = responseMap[query] || []
+      return {
+        ok: true,
+        json: async () => ({ items }),
+      }
+    })
+    return () => {
+      globalThis.fetch = originalFetch
+    }
+  }
+
+  function hereItem(name, lat, lng, countryName, resultType = 'locality') {
+    return {
+      title: name,
+      position: { lat, lng },
+      resultType,
+      address: { label: name, countryName, countryCode: 'XX' },
+    }
+  }
+
+  it('geocodes ancestors and splits into geocoded/geocodeFailed', async () => {
+    const cleanup = setupFetchMock({
+      'London, England': [hereItem('London', 51.5, -0.12, 'United Kingdom')],
+      'England': [hereItem('England', 52.0, -1.0, 'United Kingdom')],
+      'Nowhere, Nowhereland': [],
+      'Nowhereland': [],
+    })
+
+    try {
+      const ancestors = [
+        { id: '1', name: 'John', birthPlace: 'London, England' },
+        { id: '2', name: 'Jane', birthPlace: 'Nowhere, Nowhereland' },
+      ]
+      const progress = vi.fn()
+      const { geocoded, geocodeFailed } = await geocodeAncestors(
+        ancestors,
+        progress
+      )
+
+      expect(geocoded).toHaveLength(1)
+      expect(geocoded[0].id).toBe('1')
+      expect(geocoded[0].lat).toBeCloseTo(51.5, 0)
+      expect(geocoded[0].country).toBe('United Kingdom')
+
+      expect(geocodeFailed).toHaveLength(1)
+      expect(geocodeFailed[0].id).toBe('2')
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('calls onProgress for each ancestor processed', async () => {
+    const cleanup = setupFetchMock({
+      'A': [hereItem('A', 1, 1, 'X')],
+      'B': [hereItem('B', 2, 2, 'Y')],
+      'C': [hereItem('C', 3, 3, 'Z')],
+    })
+
+    try {
+      const ancestors = [
+        { id: '1', name: 'A', birthPlace: 'A' },
+        { id: '2', name: 'B', birthPlace: 'B' },
+        { id: '3', name: 'C', birthPlace: 'C' },
+      ]
+      const progress = vi.fn()
+      await geocodeAncestors(ancestors, progress)
+
+      expect(progress).toHaveBeenCalledTimes(3)
+      expect(progress).toHaveBeenCalledWith(1)
+      expect(progress).toHaveBeenCalledWith(2)
+      expect(progress).toHaveBeenCalledWith(3)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('handles empty ancestors array', async () => {
+    const progress = vi.fn()
+    const { geocoded, geocodeFailed } = await geocodeAncestors([], progress)
+    expect(geocoded).toHaveLength(0)
+    expect(geocodeFailed).toHaveLength(0)
+    expect(progress).not.toHaveBeenCalled()
+  })
+
+  it('respects concurrency option', async () => {
+    let inFlight = 0
+    let maxInFlight = 0
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async (url) => {
+      inFlight++
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      // Simulate async delay
+      await new Promise((r) => setTimeout(r, 10))
+      inFlight--
+      const u = new URL(url)
+      const query = u.searchParams.get('q')
+      return {
+        ok: true,
+        json: async () => ({
+          items: [hereItem(query, 1, 1, 'X')],
+        }),
+      }
+    })
+
+    try {
+      const ancestors = Array.from({ length: 10 }, (_, i) => ({
+        id: String(i),
+        name: `Person ${i}`,
+        birthPlace: `Place${i}`,
+      }))
+      const progress = vi.fn()
+      await geocodeAncestors(ancestors, progress, { concurrency: 2 })
+
+      expect(maxInFlight).toBeLessThanOrEqual(2)
+      expect(progress).toHaveBeenCalledTimes(10)
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('handles fetch errors gracefully', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('Network error')
+    })
+
+    try {
+      const ancestors = [
+        { id: '1', name: 'Test', birthPlace: 'ErrorPlace' },
+      ]
+      const progress = vi.fn()
+      const { geocoded, geocodeFailed } = await geocodeAncestors(
+        ancestors,
+        progress
+      )
+
+      expect(geocoded).toHaveLength(0)
+      expect(geocodeFailed).toHaveLength(1)
+      expect(progress).toHaveBeenCalledWith(1)
+    } finally {
+      globalThis.fetch = originalFetch
+    }
   })
 })

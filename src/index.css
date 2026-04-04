@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "mapbox-gl/dist/mapbox-gl.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 html, body, #root {
   margin: 0;
   padding: 0;

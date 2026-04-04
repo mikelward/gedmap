@@ -20,7 +20,7 @@ export default function PersonPicker({ allPeople, defaultRootId, onSelect }) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center px-4 py-8">
       <button
         onClick={toggleTheme}
-        className="fixed bottom-4 left-4 md:absolute md:top-4 md:right-4 md:bottom-auto md:left-auto z-30 p-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        className="fixed top-4 right-4 z-30 p-2 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {theme === 'dark' ? (

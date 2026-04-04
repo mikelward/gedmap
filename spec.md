@@ -1,10 +1,10 @@
-# AncestryAtlas — Implementation Spec
+# GedMap — Implementation Spec
 
 ## Overview
 
 Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces on a Mapbox map. No backend, no auth, no database.
 
-**Domain:** ancestryatlas.app
+**Domain:** gedmap.com
 **Deploy:** Vercel (auto-deploy on push)
 
 ---

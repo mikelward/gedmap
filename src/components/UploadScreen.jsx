@@ -107,7 +107,7 @@ export default function UploadScreen({ onFileUpload, appError }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".ged,.gedcom"
+          accept="*/*"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]

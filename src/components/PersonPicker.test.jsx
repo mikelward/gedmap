@@ -80,4 +80,14 @@ describe('PersonPicker', () => {
     renderPicker()
     expect(screen.getByText('No details')).toBeInTheDocument()
   })
+
+  it('displays appError when provided', () => {
+    renderPicker({ appError: 'No ancestors found for this person.' })
+    expect(screen.getByText('No ancestors found for this person.')).toBeInTheDocument()
+  })
+
+  it('does not render error paragraph when appError is not provided', () => {
+    renderPicker()
+    expect(screen.queryByText('No ancestors found for this person.')).not.toBeInTheDocument()
+  })
 })

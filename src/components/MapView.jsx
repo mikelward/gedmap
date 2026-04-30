@@ -107,8 +107,12 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
   const ancestorLookup = useMemo(() => {
     const lookup = new globalThis.Map()
     ancestors.forEach((a) => lookup.set(a.id, a))
+    const { noPlace = [], geocodeFailed = [] } = unmapped
+    for (const a of [...noPlace, ...geocodeFailed]) {
+      lookup.set(a.id, a)
+    }
     return lookup
-  }, [ancestors])
+  }, [ancestors, unmapped])
 
   const geojson = useMemo(() => {
     const STEP_LAT = 0.03
@@ -166,7 +170,9 @@ export default function MapView({ ancestors, unmapped, onReset, onViewAs, onView
       const ancestor = ancestorLookup.get(id)
       if (!ancestor) return
       setSelected(ancestor)
-      flyTo(ancestor.lng, ancestor.lat)
+      if (ancestor.lat != null && ancestor.lng != null) {
+        flyTo(ancestor.lng, ancestor.lat)
+      }
     },
     [ancestorLookup, flyTo]
   )

@@ -104,6 +104,7 @@ function App() {
     setAncestors([])
     setGeocodeProgress({ done: 0, total: 0 })
     setUnmapped({ noPlace: [], geocodeFailed: [] })
+    setError(null)
     parsedRef.current = null
   }, [])
 
@@ -118,6 +119,7 @@ function App() {
         allPeople={allPeople}
         defaultRootId={defaultRootId}
         onSelect={handlePickPerson}
+        appError={error}
       />
     )
   }

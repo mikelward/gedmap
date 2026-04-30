@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTheme } from '../ThemeContext'
 
-export default function PersonPicker({ allPeople, defaultRootId, onSelect }) {
+export default function PersonPicker({ allPeople, defaultRootId, onSelect, appError }) {
   const [search, setSearch] = useState('')
   const { theme, toggleTheme } = useTheme()
 
@@ -42,6 +42,10 @@ export default function PersonPicker({ allPeople, defaultRootId, onSelect }) {
           {allPeople.length} people in file — pick who to map ancestors for
         </p>
       </div>
+
+      {appError && (
+        <p className="text-red-500 dark:text-red-400 text-sm mb-4">{appError}</p>
+      )}
 
       <div className="w-full max-w-md mb-4">
         <div className="relative">

@@ -99,15 +99,6 @@ function App() {
     }
   }, [])
 
-  const handleReset = useCallback(() => {
-    setState('upload')
-    setAncestors([])
-    setGeocodeProgress({ done: 0, total: 0 })
-    setUnmapped({ noPlace: [], geocodeFailed: [] })
-    setError(null)
-    parsedRef.current = null
-  }, [])
-
   if (state === 'upload') {
     return <UploadScreen onFileUpload={handleFileUpload} appError={error} />
   }
@@ -137,7 +128,6 @@ function App() {
     <MapView
       ancestors={ancestors}
       unmapped={unmapped}
-      onReset={handleReset}
       onViewAs={handleViewAs}
       onViewAll={handleViewAll}
     />

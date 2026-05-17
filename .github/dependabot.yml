@@ -7,3 +7,11 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+    groups:
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "@eslint-community/*"
+          - "eslint-plugin-*"
+          - "eslint-config-*"

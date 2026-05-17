@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // Set the HERE API key before geocode.js is imported so hereSearch doesn't short-circuit.
 vi.hoisted(() => {

@@ -60,7 +60,6 @@ function renderMapView(props = {}) {
       <MapView
         ancestors={[ROOT_ANCESTOR]}
         unmapped={{ noPlace: [UNMAPPED_PARENT], geocodeFailed: [] }}
-        onReset={() => {}}
         onViewAs={() => {}}
         onViewAll={() => {}}
         {...props}

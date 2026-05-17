@@ -89,7 +89,7 @@ function useIsMobile() {
   return isMobile
 }
 
-export default function MapView({ ancestors, unmapped, onReset, onViewAs, onViewAll }) {
+export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
   const mapRef = useRef(null)
   const [selected, setSelected] = useState(null)
   const [popupPos, setPopupPos] = useState(null)

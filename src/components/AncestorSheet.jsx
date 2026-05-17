@@ -1,5 +1,4 @@
 import { Drawer } from 'vaul'
-import { useEffect, useState } from 'react'
 
 function AncestorDetail({ ancestor, onNavigate }) {
   if (!ancestor) return null

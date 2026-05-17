@@ -15,3 +15,21 @@ updates:
           - "@eslint-community/*"
           - "eslint-plugin-*"
           - "eslint-config-*"
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"

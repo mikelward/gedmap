@@ -15,8 +15,8 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "mapbox-gl": "^3.20.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-map-gl": "^8.1.0",
     "tailwindcss": "^4.2.2",
     "vaul": "^1.1.2"

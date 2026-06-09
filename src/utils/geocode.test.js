@@ -152,10 +152,10 @@ describe('splitPlace', () => {
     expect(parts).toEqual(['London', 'England'])
   })
 
-  it('handles single-part place strings', () => {
+  it('returns no spaceParts for single-word places (would duplicate parts)', () => {
     const { parts, spaceParts } = splitPlace('Australia')
     expect(parts).toEqual(['Australia'])
-    expect(spaceParts).toEqual(['Australia'])
+    expect(spaceParts).toBeNull()
   })
 
   it('handles multi-level GEDCOM hierarchies', () => {

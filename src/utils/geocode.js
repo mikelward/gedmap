@@ -78,7 +78,11 @@ export function pickBestFeature(features) {
 // Split a GEDCOM place string into parts for progressive querying.
 export function splitPlace(place) {
   const parts = place.split(',').map((s) => s.trim())
-  const spaceParts = place.includes(',') ? null : place.split(/\s+/)
+  // Fall back to space-splitting only when it produces a genuinely
+  // different query — for a single word it would just repeat parts.
+  const spaceTokens = place.trim().split(/\s+/)
+  const spaceParts =
+    place.includes(',') || spaceTokens.length < 2 ? null : spaceTokens
   return { parts, spaceParts }
 }
 

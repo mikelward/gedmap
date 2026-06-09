@@ -328,6 +328,26 @@ describe('tryGeocode', () => {
     expect(result.lat).toBeCloseTo(-33.87, 0)
   })
 
+  it('stops early on a city-level (place) result without querying broader parts', async () => {
+    // HERE maps city results to 'place' (specificity 4); a broader query
+    // can never beat an already-found city match, so no further API
+    // calls should be made.
+    const calls = []
+    const trackingSearch = (query) => {
+      calls.push(query)
+      if (calls.length === 1) {
+        return Promise.resolve([
+          feature('Zagreb', 'place', [15.98, 45.81], 'Croatia'),
+        ])
+      }
+      return Promise.resolve([])
+    }
+    const result = await tryGeocode(['Zagreb', 'Croatia'], trackingSearch)
+    expect(result).not.toBeNull()
+    expect(result.country).toBe('Croatia')
+    expect(calls).toEqual(['Zagreb, Croatia'])
+  })
+
   it('stops early when specificity <= 3', async () => {
     const calls = []
     const trackingSearch = (query) => {

@@ -99,7 +99,10 @@ export async function tryGeocode(parts, searchFn) {
       bestSpecificity = pick.specificity
     }
 
-    if (pick.specificity <= 3) break
+    // Stop once we have a city-level (or better) hit — the remaining
+    // queries are strictly broader and can't improve on it. HERE maps
+    // city results to 'place', so the threshold must include it.
+    if (pick.specificity <= SPECIFICITY.place) break
   }
 
   if (!bestFeature) return null

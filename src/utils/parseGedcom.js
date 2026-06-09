@@ -43,6 +43,9 @@ function buildTree(tokens) {
     }
 
     const parent = stack[stack.length - 1]
+    // A line that skips levels leaves holes in the stack; drop lines whose
+    // parent slot is one of those holes rather than crashing on the file.
+    if (!parent) continue
 
     // Handle CONC (concatenation) and CONT (continuation)
     // These append to the parent node's value, not a sibling

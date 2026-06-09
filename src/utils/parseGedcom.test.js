@@ -467,6 +467,34 @@ describe('buildFamilyLinks', () => {
     const parent = individuals.get('@I1@')
     expect(parent.childIds).toEqual(['@I2@'])
   })
+
+  it('does not create duplicate parentIds', () => {
+    // A child referenced twice in the same family shouldn't get its
+    // parents linked twice
+    const gedcom = `
+0 @I1@ INDI
+1 NAME Father /Test/
+1 SEX M
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mother /Test/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Child /Test/
+1 SEX M
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I3@
+0 TRLR
+`
+    const { individuals } = parseGedcomFile(gedcom)
+    const child = individuals.get('@I3@')
+    expect(child.parentIds).toEqual(['@I1@', '@I2@'])
+  })
 })
 
 // --- getRelationshipLabel (tested via collectAncestorsForRoot) ---

@@ -257,6 +257,23 @@ this is not a valid GEDCOM line
     expect(individuals.get('@I1@').sex).toBe('M')
   })
 
+  it('does not crash on level-skipping lines', () => {
+    // "2 FOO" directly under a level-0 record skips level 1, leaving a hole
+    // in the parser stack; the following sibling lines used to crash the
+    // whole parse with "Cannot read properties of undefined".
+    const gedcom = `
+0 @I1@ INDI
+1 NAME John /Smith/
+0 OBJ
+2 FOO a
+2 CONC x
+2 BAR b
+0 TRLR
+`
+    const { individuals } = parseGedcomFile(gedcom)
+    expect(individuals.get('@I1@').name).toBe('John Smith')
+  })
+
   it('handles individuals with missing optional fields', () => {
     const gedcom = `
 0 @I1@ INDI

@@ -37,7 +37,9 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
   const grouped = useMemo(() => {
     const groups = new globalThis.Map()
     for (const a of filtered) {
-      const gen = a.generation ?? 0
+      // "View all" people have no generation — keep them in their own
+      // group (-1) rather than mislabeling everyone as "Self".
+      const gen = a.generation ?? -1
       if (!groups.has(gen)) groups.set(gen, [])
       groups.get(gen).push(a)
     }
@@ -121,10 +123,12 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
         )}
         {grouped.map(([gen, people]) => (
           <div key={gen}>
-            <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider
-                           px-3 pt-3 pb-1 sticky top-0 bg-white/95 dark:bg-gray-900/95">
-              {GEN_LABELS[gen] || `Generation ${gen}`}
-            </h3>
+            {gen >= 0 && (
+              <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider
+                             px-3 pt-3 pb-1 sticky top-0 bg-white/95 dark:bg-gray-900/95">
+                {GEN_LABELS[gen] || `Generation ${gen}`}
+              </h3>
+            )}
             {people.map((a) => (
               <button
                 key={a.id}

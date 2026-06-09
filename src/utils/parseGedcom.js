@@ -148,8 +148,11 @@ function buildFamilyLinks(tree, individuals) {
     for (const childId of childIds) {
       const child = individuals.get(childId)
       if (!child) continue
-      if (husbId && individuals.has(husbId)) child.parentIds.push(husbId)
-      if (wifeId && individuals.has(wifeId)) child.parentIds.push(wifeId)
+      for (const pid of [husbId, wifeId]) {
+        if (pid && individuals.has(pid) && !child.parentIds.includes(pid)) {
+          child.parentIds.push(pid)
+        }
+      }
     }
 
     // Link parents to children

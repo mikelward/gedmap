@@ -114,6 +114,19 @@ describe('AncestorSidebar', () => {
     expect(handler).toHaveBeenCalledWith(true)
   })
 
+  it('does not label generation-less people (View all mode) as Self', () => {
+    renderSidebar({
+      ancestors: [
+        { id: '1', name: 'Someone', generation: null, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' },
+        { id: '2', name: 'Someone Else', generation: null, relationship: null, birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' },
+      ],
+      unmapped: { noPlace: [], geocodeFailed: [] },
+    })
+    expect(screen.queryByText('Self')).not.toBeInTheDocument()
+    expect(screen.getByText('Someone')).toBeInTheDocument()
+    expect(screen.getByText('Someone Else')).toBeInTheDocument()
+  })
+
   it('renders View all and View as buttons', () => {
     renderSidebar()
     expect(screen.getByText('View all')).toBeInTheDocument()

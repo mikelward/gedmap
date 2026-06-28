@@ -42,16 +42,66 @@ function ProviderGuide({ provider }) {
   )
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), summary, input, [tabindex]:not([tabindex="-1"])'
+
+// An element is reachable by Tab only if it is not hidden inside a collapsed
+// <details> (the <summary> itself stays reachable).
+function isReachable(el) {
+  for (let node = el; node && node.parentElement; node = node.parentElement) {
+    const parent = node.parentElement
+    if (parent.tagName === 'DETAILS' && !parent.open && node.tagName !== 'SUMMARY') {
+      return false
+    }
+  }
+  return true
+}
+
 export default function ExportGuide({ open, onClose }) {
   const dialogRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
+
+    // Move focus into the dialog and restore it to the trigger on close.
+    const previouslyFocused = document.activeElement
+    dialogRef.current?.focus()
+
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+
+      // Trap Tab order within the dialog so the background stays unreachable.
+      const dialog = dialogRef.current
+      if (!dialog) return
+      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE)).filter(
+        isReachable
+      )
+      if (focusable.length === 0) {
+        e.preventDefault()
+        dialog.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || active === dialog)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
+
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
+    }
   }, [open, onClose])
 
   if (!open) return null
@@ -66,6 +116,7 @@ export default function ExportGuide({ open, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="How to export a GEDCOM file"
+        tabIndex={-1}
         className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-white dark:bg-gray-900
                    shadow-2xl border border-gray-200 dark:border-gray-800 p-6"
         onClick={(e) => e.stopPropagation()}

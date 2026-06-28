@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef } from 'react'
 import { useTheme } from '../ThemeContext'
+import ExportGuide from './ExportGuide'
 
 export default function UploadScreen({ onFileUpload, appError }) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
+  const [guideOpen, setGuideOpen] = useState(false)
   const fileInputRef = useRef(null)
   const { theme, toggleTheme } = useTheme()
 
@@ -124,6 +126,16 @@ export default function UploadScreen({ onFileUpload, appError }) {
         Upload a GEDCOM file exported from Ancestry, MyHeritage, FamilySearch,
         or any genealogy app
       </p>
+
+      <button
+        type="button"
+        onClick={() => setGuideOpen(true)}
+        className="text-amber-500 dark:text-amber-400 hover:underline text-sm mt-3"
+      >
+        How do I export a GEDCOM file?
+      </button>
+
+      <ExportGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   )
 }

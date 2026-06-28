@@ -48,11 +48,11 @@ export const PROVIDERS = [
   {
     name: 'Findmypast',
     helpUrl:
-      'https://www.myheritage.com/help/en/articles/12851478-how-can-i-export-a-gedcom-of-my-family-tree-from-findmypast',
+      'https://www.findmypast.com/help/articles/206598369-how-do-i-download-my-family-tree-from-findmypast',
     steps: [
-      'Open your Family Tree from the top menu.',
-      'Click the Export tree button shown next to your tree (alongside Settings and Delete tree).',
-      'Download the GEDCOM file.',
+      'Click My Family Tree in the top menu, then View all trees.',
+      'Hover over the icons to the right of your tree and click Export tree.',
+      'The GEDCOM file is saved to your computer when the export finishes.',
     ],
     note: null,
   },

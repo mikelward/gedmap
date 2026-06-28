@@ -73,4 +73,53 @@ describe('ExportGuide', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('moves focus into the dialog when opened', () => {
+    render(<ExportGuide open={true} onClose={() => {}} />)
+    expect(document.activeElement).toBe(screen.getByRole('dialog'))
+  })
+
+  it('restores focus to the trigger when closed', () => {
+    const trigger = document.createElement('button')
+    document.body.appendChild(trigger)
+    trigger.focus()
+    expect(document.activeElement).toBe(trigger)
+
+    const { rerender } = render(<ExportGuide open={true} onClose={() => {}} />)
+    expect(document.activeElement).not.toBe(trigger)
+
+    rerender(<ExportGuide open={false} onClose={() => {}} />)
+    expect(document.activeElement).toBe(trigger)
+
+    document.body.removeChild(trigger)
+  })
+
+  it('traps Tab focus within the dialog', () => {
+    render(<ExportGuide open={true} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    // With every <details> collapsed, the reachable elements are the close
+    // button and each provider's <summary>; the help links are hidden.
+    const closeButton = screen.getByLabelText('Close')
+    const summaries = dialog.querySelectorAll('summary')
+    const lastSummary = summaries[summaries.length - 1]
+
+    lastSummary.focus()
+    expect(document.activeElement).toBe(lastSummary)
+
+    // Tab from the last reachable element wraps back to the first (close button).
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(document.activeElement).toBe(closeButton)
+  })
+
+  it('wraps Shift+Tab from the dialog back to the last reachable element', () => {
+    render(<ExportGuide open={true} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    const summaries = dialog.querySelectorAll('summary')
+    const lastSummary = summaries[summaries.length - 1]
+
+    // Focus starts on the dialog itself; Shift+Tab should jump to the last item.
+    expect(document.activeElement).toBe(dialog)
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(lastSummary)
+  })
 })

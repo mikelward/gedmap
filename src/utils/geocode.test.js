@@ -482,6 +482,28 @@ describe('geocodeAncestors', () => {
     }
   })
 
+  it('geocodes a birth place shared by concurrent ancestors with a single API request', async () => {
+    const cleanup = setupFetchMock({
+      'Dupville, Dupland': [hereItem('Dupville', 10, 20, 'Dupland')],
+    })
+
+    try {
+      const ancestors = [
+        { id: '1', name: 'A', birthPlace: 'Dupville, Dupland' },
+        { id: '2', name: 'B', birthPlace: 'Dupville, Dupland' },
+        { id: '3', name: 'C', birthPlace: 'Dupville, Dupland' },
+      ]
+      const { geocoded } = await geocodeAncestors(ancestors, () => {})
+
+      expect(geocoded).toHaveLength(3)
+      expect(geocoded.every((a) => a.lat === 10 && a.country === 'Dupland')).toBe(true)
+      // All three run concurrently; the in-flight lookup must be shared.
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+    } finally {
+      cleanup()
+    }
+  })
+
   it('handles empty ancestors array', async () => {
     const progress = vi.fn()
     const { geocoded, geocodeFailed } = await geocodeAncestors([], progress)

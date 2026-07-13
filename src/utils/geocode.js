@@ -133,21 +133,27 @@ export async function tryGeocode(parts, searchFn) {
   return { lat, lng, country }
 }
 
-async function geocodePlace(place) {
+// Cache the in-flight promise, not just the settled result — ancestors
+// sharing a birth place run concurrently, and each would otherwise miss
+// the cache and issue its own duplicate API requests.
+function geocodePlace(place) {
   if (cache.has(place)) return cache.get(place)
 
-  const { parts, spaceParts } = splitPlace(place)
+  const promise = (async () => {
+    const { parts, spaceParts } = splitPlace(place)
 
-  let result = await tryGeocode(parts, hereSearch)
-  if (!result && spaceParts) {
-    result = await tryGeocode(spaceParts, hereSearch)
-  }
+    let result = await tryGeocode(parts, hereSearch)
+    if (!result && spaceParts) {
+      result = await tryGeocode(spaceParts, hereSearch)
+    }
 
-  const cached = result
-    ? { lat: result.lat, lng: result.lng, country: result.country }
-    : null
-  cache.set(place, cached)
-  return cached
+    return result
+      ? { lat: result.lat, lng: result.lng, country: result.country }
+      : null
+  })()
+  promise.catch(() => cache.delete(place))
+  cache.set(place, promise)
+  return promise
 }
 
 export async function geocodeAncestors(ancestors, onProgress, { concurrency = 5 } = {}) {

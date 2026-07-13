@@ -244,6 +244,15 @@ describe('tokenizer and tree builder', () => {
     expect(individuals.get('@I1@').birthPlace).toBe('London')
   })
 
+  it('tolerates leading whitespace before the level number', () => {
+    const gedcom =
+      '0 @I1@ INDI\n  1 NAME John /Smith/\n\t1 SEX M\n 1 BIRT\n  2 PLAC London\n0 TRLR\n'
+    const { individuals } = parseGedcomFile(gedcom)
+    expect(individuals.get('@I1@').name).toBe('John Smith')
+    expect(individuals.get('@I1@').sex).toBe('M')
+    expect(individuals.get('@I1@').birthPlace).toBe('London')
+  })
+
   it('skips malformed lines', () => {
     const gedcom = `
 0 @I1@ INDI

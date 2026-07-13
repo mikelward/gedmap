@@ -77,7 +77,9 @@ export function pickBestFeature(features) {
 
 // Split a GEDCOM place string into parts for progressive querying.
 export function splitPlace(place) {
-  const parts = place.split(',').map((s) => s.trim())
+  // Drop empty segments — exports often leave blank jurisdiction slots
+  // ("Brooklyn, , New York, USA,") that would produce garbage queries.
+  const parts = place.split(',').map((s) => s.trim()).filter(Boolean)
   // Fall back to space-splitting only when it produces a genuinely
   // different query — for a single word it would just repeat parts.
   const spaceTokens = place.trim().split(/\s+/)

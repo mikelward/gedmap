@@ -6,7 +6,9 @@ function tokenize(text) {
   const records = []
 
   for (const line of lines) {
-    const match = line.match(/^(\d+)\s+(@[^@]+@\s+)?(\S+)\s?(.*)$/)
+    // Strip leading whitespace only — some producers indent lines, but
+    // trailing whitespace can be significant in CONC/CONT values.
+    const match = line.replace(/^\s+/, '').match(/^(\d+)\s+(@[^@]+@\s+)?(\S+)\s?(.*)$/)
     if (!match) continue
 
     const level = parseInt(match[1], 10)

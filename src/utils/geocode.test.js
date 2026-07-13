@@ -152,6 +152,12 @@ describe('splitPlace', () => {
     expect(parts).toEqual(['London', 'England'])
   })
 
+  it('drops empty segments from doubled or trailing commas', () => {
+    // Ancestry-style exports leave empty jurisdiction slots: "Town, , State, USA,"
+    const { parts } = splitPlace('Brooklyn, , New York, USA,')
+    expect(parts).toEqual(['Brooklyn', 'New York', 'USA'])
+  })
+
   it('returns no spaceParts for single-word places (would duplicate parts)', () => {
     const { parts, spaceParts } = splitPlace('Australia')
     expect(parts).toEqual(['Australia'])

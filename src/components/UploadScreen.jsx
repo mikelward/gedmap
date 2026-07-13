@@ -114,6 +114,9 @@ export default function UploadScreen({ onFileUpload, appError }) {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) handleFile(file)
+            // Reset so choosing the same file again (e.g. after an error or
+            // a re-export) still fires a change event.
+            e.target.value = ''
           }}
         />
       </div>

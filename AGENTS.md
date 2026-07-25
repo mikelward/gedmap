@@ -82,6 +82,9 @@ bites, not the third.
 - **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR → merge
   via rebase or squash. One topic per branch. Follow-up work after a merge
   goes on a new branch. Never commit to `main` / `master`.
+- **Use `git worktree` when it's available.** Give each branch its own
+  worktree instead of switching branches in place, so work in progress on one
+  branch isn't disturbed by work on another.
 - **Stacked PRs.** The lower PR (infra) targets `main`; the upper PR
   (feature) targets the lower PR's branch. When the lower PR merges, rebase
   the upper one onto `main`.
@@ -99,6 +102,10 @@ bites, not the third.
 
 ## Pull requests and reviews
 
+- **"Drive to merge"** is shorthand for the whole loop: open the PR, send it
+  for Codex review, address every review comment — fix it if you agree, reply
+  on the thread saying why if you don't — and merge once CI is green and Codex
+  has left its thumbs up.
 - Open PRs ready for review (not draft) unless asked otherwise.
 - When a feature has multiple open PRs in a stack, list **every** open PR
   on the feature by URL, one per line — the "View PR" chip sticks to the

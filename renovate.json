@@ -1,0 +1,97 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "timezone": "UTC",
+  "description": [
+    "Renovate is eligible to run at any time. Update volume is paced by the per-update-type minimumReleaseAge cooldowns and prConcurrentLimit below, not by a weekly window — a window only delays PRs that have already cooled down, and it never applies to vulnerability alerts (Renovate forces schedule: [] and prCreation: immediate on those).",
+    "mode=full is stated explicitly because the Mend-hosted app defaults an 'All repositories' install to silent mode, in which Renovate opens no PRs and no dependency dashboard issue — indistinguishable from 'nothing needs updating'. The Mend-side setting is injected via RENOVATE_CONFIG and wins over this file, so if PRs still never appear the remaining switch is developer.mend.io → repo/org → Interactive, not here."
+  ],
+  "mode": "full",
+  "schedule": ["at any time"],
+  "assignees": ["mikelward"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  },
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "description": "Cooldown before an update is offered.",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "minimumReleaseAge": "5 days"
+    },
+    {
+      "description": "Auto-merge every patch and minor once CI is green; majors always wait for review. Pre-1.0 (0.x) packages are excluded — SemVer permits breaking changes in a 0.x minor, so they still open a PR for review.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Lock file maintenance auto-merges too, but as its own rule: a lockFileMaintenance branch refreshes the whole lockfile and has no single dependency behind it, so it has no current version for matchCurrentVersion to test. Folded into the rule above it would silently never match, and those PRs would pile up unmerged.",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Grouping keeps peer-related packages in one PR.",
+      "groupName": "eslint",
+      "matchPackageNames": [
+        "eslint",
+        "eslint-**",
+        "@eslint/**",
+        "@eslint-community/**"
+      ]
+    },
+    {
+      "groupName": "testing",
+      "matchPackageNames": [
+        "@testing-library/**",
+        "vitest",
+        "@vitest/**",
+        "jsdom"
+      ]
+    },
+    {
+      "groupName": "tailwind",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**"]
+    },
+    {
+      "groupName": "vite",
+      "matchPackageNames": ["vite", "@vitejs/**", "vite-plugin-**"]
+    },
+    {
+      "groupName": "react",
+      "matchPackageNames": ["react", "react-dom", "react-router-dom"]
+    },
+    {
+      "groupName": "mapbox",
+      "matchPackageNames": ["mapbox-gl", "react-map-gl"]
+    },
+    {
+      "groupName": "types",
+      "matchPackageNames": ["@types/**"]
+    },
+    {
+      "description": "GitHub Actions get their own group. No minimumReleaseAge here on purpose: the per-update-type cooldowns above already apply to every manager, and repeating one here would override the 14-day major cooldown with 7 days for actions majors (later rules win on scalar fields).",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    }
+  ]
+}

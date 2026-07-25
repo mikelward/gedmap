@@ -9,11 +9,15 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          # Read the major from .nvmrc rather than repeating it here, so CI,
+          # `nvm use`, and engines.node can't drift apart (nodeVersion.test.js
+          # asserts the last pair agree).
+          node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci

@@ -93,7 +93,7 @@ bites, not the third.
 ## Node version
 
 - **The Node major is named in two places and they move together or not at
-  all:** `.nvmrc` (CI's `setup-node@v6` via `node-version-file`, `nvm use`, and
+  all:** `.nvmrc` (CI's `setup-node` via `node-version-file`, `nvm use`, and
   the web sandbox's session-start hook) and `engines.node` in `package.json`
   (the build image, plus npm's EBADENGINE warning). `nodeVersion.test.js`
   fails CI on a mismatch — a split is quiet in the worst way, going green on

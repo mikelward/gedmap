@@ -12,6 +12,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
+  "engines": {
+    "node": "^24"
+  },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
     "mapbox-gl": "^3.26.0",

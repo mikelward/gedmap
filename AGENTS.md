@@ -77,6 +77,69 @@ bites, not the third.
   answer, pick a "recommended" option yourself, or keep working on the part
   the question affects.
 
+## Node version
+
+- **The Node major is named in two places and they move together or not at
+  all:** `.nvmrc` (CI's `setup-node@v6` via `node-version-file`, `nvm use`, and
+  the web sandbox's session-start hook) and `engines.node` in `package.json`
+  (the build image, plus npm's EBADENGINE warning). `nodeVersion.test.js`
+  fails CI on a mismatch — a split is quiet in the worst way, going green on
+  one runtime while the deployed build runs another.
+- **Never hard-code a Node version in `ci.yml`.** Use `node-version-file:
+  .nvmrc` so there's one source of truth. CI ran a hard-coded `22` while
+  nothing else pinned anything at all, which is how the drift started.
+- **The web sandbox is the consumer that can't follow on its own.** Its image
+  ships whatever Node it ships (22 today), so `.claude/hooks/session-start.sh`
+  provisions the `.nvmrc` major before `npm install`. It re-resolves the newest
+  release of that major every run rather than trusting the container's cached
+  copy, because container state survives between sessions and an
+  existence-only check would pin the first version ever installed.
+  Best-effort: an unreachable nodejs.org keeps the cached toolchain and says
+  so, rather than failing session startup.
+- **The hook is identical in all three repos, and so is its test.**
+  `scripts/session-start-hook.test.js` runs the real hook end to end against a
+  temp install root and a `file://` release fixture, via the `SESSION_NODE_ROOT`
+  and `SESSION_NODE_DIST_URL` seams — no network, no stubbed internals. Its
+  failure mode is a *false pass*, so behavior is asserted, not structure. When
+  you change the hook, change it everywhere and keep the Node block
+  byte-identical.
+- Currently Node **24** (the active LTS; 22 dropped to maintenance when 26
+  shipped).
+
+## Dependency updates
+
+- **Renovate (Mend-hosted app) owns dependency bumps.** Config lives in
+  `renovate.json` at the repo root; validate changes with
+  `npx --package renovate renovate-config-validator`.
+- **Renovate silence is not success — every failure mode here is silent.** A
+  bot that opens nothing looks exactly like a repo with nothing to update. If
+  no Renovate PR or Dependency Dashboard issue has appeared in a while, open
+  the per-repo job log at developer.mend.io before assuming there's nothing to
+  do. A `DONE` job does not mean Renovate did anything: a silent-mode run
+  clones, scans, extracts, creates nothing, and reports `DONE`.
+- **`mode=silent` suppresses everything, and it's a Mend-side switch.** The
+  Mend-hosted app injects its own config via `RENOVATE_CONFIG` and defaults an
+  "All repositories" install to silent: no PRs, no `renovate/*` branches, no
+  Dependency Dashboard, not even an onboarding PR. `"mode": "full"` in
+  `renovate.json` states the repo-side intent (and is what a self-hosted or
+  CLI run honors), but the injected value wins — if PRs still never appear the
+  remaining switch is developer.mend.io → repo/org → Interactive.
+- **A top-level `schedule` is a delay, not a gate.** Cooldowns
+  (`minimumReleaseAge`: 5 days patch / 7 minor / 14 major) plus
+  `prConcurrentLimit` are what pace volume; a window only parks updates that
+  have *already* cooled down. This repo ran a Saturday 06:00–12:00 window that
+  added up to six days on top of the cooldowns for no benefit. Schedules never
+  apply to security fixes either — Renovate forces `schedule: []` and
+  `prCreation: immediate` on vulnerability-alert branches.
+- **Deleting `lockFileMaintenance.schedule` does not mean "any time".** That
+  option's own default is `before 4am on monday`, so dropping the key silently
+  restores a weekly window instead of removing one. `renovate.test.js` guards
+  both this and `mode`/`schedule`.
+- **Minors and patches auto-merge on green CI; majors always wait for review.**
+  Pre-1.0 (`0.x`) packages are excluded from auto-merge — SemVer permits
+  breaking changes in a 0.x minor. Auto-merge is only as safe as CI, so a red
+  or skipped check is a stop sign, not noise to route around.
+
 ## Branching
 
 - **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR → merge

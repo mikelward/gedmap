@@ -218,19 +218,85 @@ bites, not the third.
   into `main`.
 - `git push --force-with-lease` to your own live feature branch after a
   rebase is routine — don't ask. Confirm before destructive actions on
-  shared/merged branches.
+  shared/merged branches, resetting a merged branch name included — see the
+  post-merge rule below.
 - **Unshallow before answering anything that depends on git history depth.**
   The sandbox clones shallow, so `git rev-list --count`, `git log` past the
   shallow boundary, and blame return wrong answers without warning. If
   `git rev-parse --is-shallow-repository` says `true`, run
   `git fetch --unshallow` first. Don't quote a count off a shallow clone.
 - **Merge cue (`merged` / `I merged` / `landed` / merge webhook) runs hygiene
-  *before* engaging with the rest of the message:** `git fetch origin`, cut
-  a fresh `claude/<short-topic>` branch off `origin/main`, announce the switch.
+  *before* engaging with the rest of the message:** `git fetch origin main`,
+  cut a fresh `claude/<short-topic>` branch off `origin/main`, announce the
+  switch. Where the sandbox has no remote, the cue can't be honored as written
+  — a fresh branch needs a base that contains the merge, and an offline
+  checkout can't fetch one; say so and ask for a synced checkout rather than
+  branching off a stale `main`. The cue is about the branch that merged: when
+  a lower PR in a stack merges while an upper one is still open, rebase the
+  upper branch with `git rebase --onto origin/main <lower-branch>` — onto
+  `origin/main`, not local `main`, which the fetch does not advance, and
+  naming the lower branch as the upstream boundary so a squash merge doesn't
+  replay the lower commits too. Carry on there — don't abandon it for a new
+  topic branch.
+- **After a merge, take a fresh `claude/<short-topic>`** — don't reset the
+  merged name onto the new base. Its remote ref still points at the pre-merge
+  tip, so `origin/<branch>..HEAD` keeps spanning the merged commits and
+  unpushed-work checks report your own merged history back at you. When a
+  sandbox pins the branch name so a fresh one isn't available, say so and ask
+  before resetting it. No short check reliably separates "already merged" from
+  "not yet merged" here: a rebase merge rewrites the commits, a squash merge
+  collapses them, `main` moves on underneath so a tip-to-tip diff reports
+  upstream drift as branch work, the remote ref can hold a commit the local
+  one doesn't, and no tree comparison sees the uncommitted work a `--hard`
+  reset would erase. Confirming costs one question in a rare situation;
+  guessing costs someone their work. Don't reach for `--force-with-lease` as
+  the safety net either — fetching updates the remote-tracking ref the lease
+  compares against, so a commit you have already fetched passes the lease
+  unnoticed.
+- **The agent authors; whoever merges takes over the committer line.** A squash
+  or rebase merge rewrites the committer to the person who pressed the button —
+  the repo owner normally, the agent itself when it merges under *drive*. That's
+  expected either way — never re-author or amend already-merged commits to "fix"
+  authorship or signing.
+- **No-remote sandbox exception.** Sandboxes without remote Git support (such
+  as Codex cloud) may continue from the checked-out HEAD without fetching
+  `origin` — but still on this task's own topic branch: unless the checked-out
+  branch is already it, cut a local `claude/<short-topic>` first — and cut it
+  from a base free of earlier work (local `main` where it carries none,
+  otherwise ask for a synced checkout), since branching off a stale topic tip
+  only renames that topic's commits into your PR. Committing onto `main` or
+  onto a stale topic branch from earlier work both mix unrelated topics into
+  one PR once remote access returns; only fetch, push and the PR are
+  unavailable, not the branching rules — a missing remote or unsupported fetch
+  must not block otherwise-local work. Commit locally, and say plainly that
+  fetch, push, and pull requests were unavailable rather than implying they
+  happened. Do not make claims that depend on unseen remote state.
+- **After every push and after every merge, report the resulting HEAD SHA** so
+  the operator can tell which build is deployed. Format: `pushed <short-sha>`
+  after a push — your branch tip on `origin/<branch>`; `merged at <short-sha>`
+  after a merge — the commit the merge produced on `main`, which is *not* your
+  local `HEAD`: a rebase or squash merge leaves the feature branch pointing at
+  the source commit, so take the SHA the merge API returned, or the merge
+  commit the PR itself records — not the `origin/main` tip, which another push
+  can have moved past it by the time you look. 7-char prefix is fine. Mention
+  it once per push.
+- **On every push, update the PR title and body.** Whenever you push to a
+  branch with an open PR, edit its title and description
+  (`mcp__github__update_pull_request`) so they still describe what is on the
+  branch — new commits, reversed decisions, changed scope — and print the PR
+  link in the chat reply for that push, not only at the end of the
+  conversation. A body that listed three bullets goes stale the moment a
+  fourth commit lands; fetch the PR's base first — pushing your branch doesn't
+  refresh it, and a stale base ref describes changes the PR no longer contains
+  — then re-read the diff against that base (`origin/main`, or the lower
+  branch when this is the upper PR of a stack) and patch whatever drifted
+  rather than waiting to be told.
 - End every reply with the open-PR link (or `.../compare/main...<branch>`
-  until a PR exists). Never link to a closed or merged PR. When a pending
-  decision also needs restating (see *Talking to the user*), the link goes
-  second-to-last and the question is the final line.
+  until a PR exists). Never link to a closed or merged PR. In a no-remote
+  sandbox there is no link to give: say the branch is local and unpushed
+  rather than inventing a URL. When a pending decision also needs restating
+  (see *Talking to the user*), the link goes second-to-last and the question
+  is the final line.
 
 ## Autonomy
 
@@ -313,12 +379,15 @@ bites, not the third.
   stop and wait for the answer"; that rule governs everywhere else. The
   carve-out is for destructive or irreversible actions *outside* the loop —
   rewriting shared history, deleting work, anything reaching a system beyond
-  this repo — which still wait for a real answer. The loop's own steps don't
-  count: committing, pushing, opening a PR, subscribing to it, reading its CI
-  and review state, arming the next scheduled check, and merging a green PR are
-  authorized here, so autopilot must not stall on them — the carve-out is aimed
-  at destructive writes to systems outside the repo, not at the loop's own
-  GitHub reads and follow-ups. Privacy uncertainty is
+  this repo — which still wait for a real answer. Resetting a pinned merged
+  branch waits too, even though it is inside the loop: the post-merge rule
+  asks precisely because no check can tell what the reset would destroy, and
+  autopilot guessing there is the loss that rule exists to prevent. The loop's
+  own steps don't count: committing, pushing, opening a PR, subscribing to it,
+  reading its CI and review state, arming the next scheduled check, and
+  merging a green PR are authorized here, so autopilot must not stall on them
+  — the carve-out is aimed at destructive writes to systems outside the repo,
+  not at the loop's own GitHub reads and follow-ups. Privacy uncertainty is
   never inside the loop either: if you can't tell whether something is user
   data — a name from a GEDCOM, a birthplace, an API key — it waits for a real
   answer, since a push can't be un-published and a `TODO.md` note doesn't

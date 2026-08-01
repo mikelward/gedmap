@@ -79,6 +79,16 @@ bites, not the third.
   important point and stop. If there's more, say the first point and ask
   whether they're ready for the next one rather than emptying everything at
   once.
+- **End the turn by restating any pending decision.** If you're waiting on an
+  answer — a question you asked, or a guess autopilot recorded for review —
+  the last line of the reply is that question, written out in about a
+  sentence. A back-reference ("as asked above") isn't actionable when the
+  question is pages back or was never actually put into words; restate it
+  every turn until it's answered. Nothing pending, no line. It is the *last*
+  line: where *Branching* also ends the reply with the open-PR link, that
+  link goes just above it. This governs replies the user reads: a scheduled
+  check that finds nothing new re-arms silently and produces no reply at all,
+  so there is nothing to restate.
 
 ## Asking questions
 
@@ -218,7 +228,9 @@ bites, not the third.
   *before* engaging with the rest of the message:** `git fetch origin`, cut
   a fresh `claude/<short-topic>` branch off `origin/main`, announce the switch.
 - End every reply with the open-PR link (or `.../compare/main...<branch>`
-  until a PR exists). Never link to a closed or merged PR.
+  until a PR exists). Never link to a closed or merged PR. When a pending
+  decision also needs restating (see *Talking to the user*), the link goes
+  second-to-last and the question is the final line.
 
 ## Autonomy
 

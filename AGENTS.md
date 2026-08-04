@@ -142,6 +142,20 @@ bites, not the third.
 
 ## Dependency updates
 
+- **Renovate is off.** `"enabled": false` at the top of `renovate.json` is the
+  master switch: the job still runs, logs `Repository is disabled`, and creates
+  nothing — no PRs, no `renovate/*` branches, no dependency dashboard, and no
+  vulnerability-alert PRs either, since a disabled repo is skipped before alerts
+  are considered. It was switched off after the config kept producing PRs that
+  were unmergeable or actively harmful: Node patches that could never go green,
+  and — once `constraints.npm` was added — an auto-merge-eligible npm floor
+  above what the pinned Node major bundles. GitHub's own Dependabot **security**
+  updates are a separate switch in repo settings and still run, so advisories
+  stay covered. Everything below is dormant but retained, so re-enabling is
+  deleting one key rather than rebuilding a config that took several rounds to
+  get right; `renovate.test.js` asserts the switch, so an accidental re-enable
+  fails CI. Uninstalling the Mend app at developer.mend.io is the other half, if
+  you want the jobs to stop running at all.
 - **Renovate (Mend-hosted app) owns dependency bumps.** Config lives in
   `renovate.json` at the repo root; validate changes with
   `npx --package renovate renovate-config-validator`.

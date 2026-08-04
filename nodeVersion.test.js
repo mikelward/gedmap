@@ -42,4 +42,13 @@ describe('Node version pinning', () => {
   it('agrees between .nvmrc and engines.node', () => {
     expect(pkg.engines.node).toMatch(pinnedToMajor);
   });
+  it('mirrors engines into the lockfile', () => {
+    // npm copies the manifest's `engines` into the lockfile's root entry, so
+    // adding a key to package.json alone leaves the two out of step until the
+    // next install rewrites it. That shows up as an unrelated dirty lockfile
+    // at the start of every fresh session — and the next lock-maintenance PR
+    // quietly absorbs it. Assert them equal so the drift fails here instead.
+    const lock = JSON.parse(read('./package-lock.json'));
+    expect(lock.packages[''].engines).toEqual(pkg.engines);
+  });
 });

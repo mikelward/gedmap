@@ -142,6 +142,12 @@ const ruleApplies = (rule, q) => {
   ) {
     return false;
   }
+  if (
+    rule.matchDepNames &&
+    !(q.depName && rule.matchDepNames.some((p) => matches(p, q.depName)))
+  ) {
+    return false;
+  }
   if (rule.matchCurrentVersion !== undefined) {
     // Only the negated-regex form this config uses is modeled. Anything else
     // would be mis-modeled silently, which is the failure this file exists to
@@ -169,6 +175,9 @@ const resolve = (q) =>
               minimumReleaseAge: rule.minimumReleaseAge,
             }),
             ...(rule.enabled !== undefined && { enabled: rule.enabled }),
+            ...(rule.dependencyDashboardApproval !== undefined && {
+              dependencyDashboardApproval: rule.dependencyDashboardApproval,
+            }),
           }
         : acc,
     {},
@@ -211,5 +220,43 @@ describe('renovate.json effective rules', () => {
         currentVersion: '4.0.0',
       }).minimumReleaseAge,
     ).toBe('14 days');
+  });
+
+  it.each(['minor', 'patch'])(
+    'does not offer a Node runtime %s',
+    (updateType) => {
+      // `.nvmrc` deliberately holds the bare major, and the nvm manager can
+      // only write a full version — so this update type has no mergeable
+      // form. The runtime already picks up patches without a commit.
+      expect(
+        resolve({ updateType, currentVersion: '24.17.0', depName: 'node' })
+          .enabled,
+      ).toBe(false);
+    },
+  );
+
+  it('holds a Node major on the dashboard rather than opening a PR', () => {
+    // Not `enabled: false`: a new LTS is the one Node change we do want to
+    // hear about. Approval is the seam between "Renovate noticed" and "a human
+    // is doing the two-file migration".
+    const major = resolve({
+      updateType: 'major',
+      currentVersion: '24.17.0',
+      depName: 'node',
+    });
+    expect(major.enabled).not.toBe(false);
+    expect(major.dependencyDashboardApproval).toBe(true);
+  });
+
+  it('leaves other packages beginning with "node" alone', () => {
+    // `matchDepNames: ["node"]` is exact under minimatch, but a later edit to
+    // `node*` would silently mute a whole family of real dependencies.
+    expect(
+      resolve({
+        updateType: 'patch',
+        currentVersion: '9.0.0',
+        depName: 'node-html-parser',
+      }).enabled,
+    ).not.toBe(false);
   });
 });

@@ -126,6 +126,17 @@ bites, not the third.
   failure mode is a *false pass*, so behavior is asserted, not structure. When
   you change the hook, change it everywhere and keep the Node block
   byte-identical.
+- **Renovate does not bump the Node runtime, and can't be made to.** `.nvmrc`
+  holds the bare major on purpose — every consumer resolves the newest release
+  of it on its own — but Renovate's nvm manager can only write a *full*
+  version, so `Update Node.js to v24.18.1` rewrote `.nvmrc` to `24.18.1` and
+  `nodeVersion.test.js` failed it, in all three repos, every time a Node patch
+  shipped. There was never a mergeable version of that PR: the upgrade it
+  offers already happens at runtime without a commit. Patches and minors are
+  off; a **major** is held behind `dependencyDashboardApproval`, so a new LTS
+  still shows up on the dashboard without opening a PR nobody can merge.
+  Checking that box means "I am doing the migration now" — expect to restore
+  the bare major in `.nvmrc` by hand in that branch.
 - Currently Node **24** (the active LTS; 22 dropped to maintenance when 26
   shipped).
 

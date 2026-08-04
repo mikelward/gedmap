@@ -89,6 +89,18 @@
       "matchPackageNames": ["@types/**"]
     },
     {
+      "description": "The Node runtime is pinned by MAJOR on purpose: `.nvmrc` holds the bare `24` so CI, `nvm use`, and the session-start hook each resolve the newest release of that major on their own, and nodeVersion.test.js asserts that exact string. Renovate's nvm manager can only write a full version, so every 'Update Node.js to v24.x.y' PR rewrites .nvmrc to `24.18.1`, fails CI, and reopens the next time a patch ships — three repos' worth of unmergeable PRs for an upgrade that already happens at runtime without a commit. Patches/minors are therefore off entirely.",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "enabled": false
+    },
+    {
+      "description": "A Node MAJOR is a runtime migration, not a dependency update — .nvmrc and engines.node move in one commit (see CLAUDE.md 'Node version'). Renovate can't do that, so it must not open the PR unprompted; dependencyDashboardApproval keeps the new major visible on the dashboard, and checking that box is the deliberate 'I am doing the migration now' signal. Expect to fix .nvmrc back to the bare major by hand in that branch.",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "GitHub Actions get their own group. No minimumReleaseAge here on purpose: the per-update-type cooldowns above already apply to every manager, and repeating one here would override the 14-day major cooldown with 7 days for actions majors (later rules win on scalar fields).",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions"

@@ -41,4 +41,16 @@ export default [
       globals: globals.node,
     },
   },
+  // Repo tooling that runs under Node, not in the browser. The `**/*.{js,jsx}`
+  // block above does not match `.mjs` at all, so without this these files get
+  // only the recommended rules with no globals declared and every `process` or
+  // `console` reference is a no-undef error.
+  {
+    files: ['**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+  },
 ]

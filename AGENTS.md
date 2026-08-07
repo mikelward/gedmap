@@ -521,11 +521,55 @@ bites, not the third.
   paraphrase in the commit / PR — don't quote verbatim. When in doubt, ask
   before pushing.
 
+## Commit messages
+
+- Write a clear, plain-English subject in sentence case; keep it short
+  (≤ ~70 chars, prefix included) and free of internal jargon.
+- Put the mechanism, the bug fixed, and file:line detail in the body, after a
+  blank line — the body is not size-constrained. A commit with nothing to
+  explain needs no body: the weekly dependency batch is the standing example,
+  where the diff is the manifests and the PR carries the check results.
+- **Prefix a subject that does not change what the app does.** A bare subject
+  means a user could notice the difference. Anything else takes one of these,
+  lowercase, followed by the sentence-case subject as above:
+
+  | Prefix | For |
+  |---|---|
+  | `deps:` | Dependency bumps — the weekly batch and any by hand |
+  | `docs:` | Prose: `spec.md`, this file, the rest of the Markdown |
+  | `todo:` | `TODO.md` bookkeeping on its own |
+  | `test:` | Tests only, with the code under test unchanged |
+  | `build:` | Toolchain, CI, lint/build config, `scripts/` |
+  | `refactor:` | Code that is deliberately behavior-preserving |
+
+- **No `feat:` or `fix:`, on purpose** — they would prefix nearly everything
+  left and leave the log as flat as it is now. The prefix marks the exception,
+  so the default stays bare.
+- **`deps:` is what earns the rule here**: 33 of the last 50 commits are the
+  weekly batch, every one reading `Update dependencies (<date>)`, so the log's
+  dominant line says nothing about whether the app changed.
+  `.github/workflows/dependency-update.yml` writes the prefix itself. A bump
+  taken *because* of the behavior it changes is a behavior change — bare, and
+  say what changed.
+- **`TODO.md` and `spec.md` ride along and never decide the prefix** — either
+  counts only when it is the whole change.
+- **A mixed commit goes bare if any part of it changes behavior.** Below that
+  line the prefix names why the commit exists, not what it touched: a
+  toolchain pin that also edits the guides describing it is `build:`, because
+  the prose moved to follow the toolchain. So there is no precedence order to
+  memorize. Two genuinely independent categories are two commits.
+
 ## Branching
 
 - **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR → merge
   via rebase or squash. One topic per branch. Follow-up work after a merge
   goes on a new branch. Never commit to `main` / `master`.
+- **The PR title carries the same prefix as a commit subject** (see *Commit
+  messages*), judged over the whole branch rather than any one commit, and
+  re-judged on every push — a branch can start documentation-only and stop
+  being so with the next commit. The title is there to be read: it is what the
+  PR list shows the repo owner, so the prefix says at a glance whether a PR
+  changes what the app does.
 - **Use `git worktree` when it's available.** Give each branch its own
   worktree instead of switching branches in place, so work in progress on one
   branch isn't disturbed by work on another.

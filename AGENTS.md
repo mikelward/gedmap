@@ -47,7 +47,10 @@ live next to their source files using the `*.test.{js,jsx}` convention.
 ## Workflow
 
 Keep this file short and concrete — add a new rule the first time something
-bites, not the third.
+bites, not the third. Every session loads it whole, so each rule costs context
+on every turn: say it once in the fewest words that carry the *why*, rewrite or
+trim an existing rule rather than appending beside it, and delete one that has
+stopped biting.
 
 - **Always add tests.** Every new function, hook, or component needs at least
   one test that exercises its behavior. Bug fixes get a regression test that

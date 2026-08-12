@@ -640,11 +640,18 @@ stopped biting.
   the safety net either — fetching updates the remote-tracking ref the lease
   compares against, so a commit you have already fetched passes the lease
   unnoticed.
+- **Branches under your own `<agent>/` prefix are yours.** Create, push,
+  `--force-with-lease` and rename them freely — no permission, no announcement,
+  no per-branch confirmation. Only a branch outside that prefix, or `main`
+  itself, is a conversation. Deleting is the one the prefix can't settle: it
+  doesn't say which session made the branch, so delete the ones this session
+  created and ask about the rest.
 - **The agent authors; whoever merges takes over the committer line.** A squash
   or rebase merge rewrites the committer to the person who pressed the button —
   the repo owner normally, the agent itself when it merges under *drive*. That's
   expected either way — never re-author or amend already-merged commits to "fix"
-  authorship or signing.
+  authorship or signing, and don't narrate it: no note in the
+reply, no offer to correct it. It is not a finding.
 - **No-remote sandbox exception.** Sandboxes without remote Git support (such
   as Codex cloud) may continue from the checked-out HEAD without fetching
   `origin` — but still on this task's own topic branch: unless the checked-out

@@ -6,12 +6,22 @@
 #   - Node dependencies (vitest / eslint / vite)
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "${CLAUDE_PROJECT_DIR:-$HOOK_DIR/../..}"
+
+# Deepen the clone before anything reads history. See scripts/unshallow.sh —
+# a shallow clone answers commit-count questions wrongly and silently.
+#
+# Above the remote-only guard on purpose: a shallow clone's wrong answers do
+# not depend on which sandbox produced it, and this is a no-op on a complete
+# one, so there is nothing to gain by asking first. Everything below is
+# toolchain provisioning, which a local machine really does manage itself.
+sh "$HOOK_DIR/../../scripts/unshallow.sh" || true
+
 # Only provision in the remote (web) sandbox; local machines manage their own.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
-
-cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
 
 # The PATH later agent shells start from, captured before anything below
 # prepends to it. persist_on_path needs to know what the session resolves

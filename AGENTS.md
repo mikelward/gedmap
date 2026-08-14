@@ -621,10 +621,13 @@ stopped biting.
   shared/merged branches, resetting a merged branch name included — see the
   post-merge rule below.
 - **Unshallow before answering anything that depends on git history depth.**
+  Claude Code sessions get this automatically — `scripts/unshallow.sh` runs
+  from the session-start hook — but the hook is Claude-only, so in any other
+  environment run that script (or `git fetch --unshallow`) yourself first.
   The sandbox clones shallow, so `git rev-list --count`, `git log` past the
-  shallow boundary, and blame return wrong answers without warning. If
-  `git rev-parse --is-shallow-repository` says `true`, run
-  `git fetch --unshallow` first. Don't quote a count off a shallow clone.
+  shallow boundary, and blame return wrong answers without warning; where no
+  remote is reachable (Codex cloud), say the history is truncated rather
+  than quoting a count.
 - **Merge cue (`merged` / `I merged` / `landed` / merge webhook) runs hygiene
   *before* engaging with the rest of the message:** `git fetch origin main`,
   cut a fresh `claude/<short-topic>` branch off `origin/main`, announce the

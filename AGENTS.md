@@ -715,12 +715,20 @@ reply, no offer to correct it. It is not a finding.
   for. Subscribe only when asked to, and unsubscribe as soon as the reason
   for it passes.
 - **Permissions are granted before the session starts, so a rule here can't
-  fix them.** Copy this repo's `.claude/settings.json` allowlist — GitHub
-  calls as well as scheduler ones, under full MCP identifiers and both
-  server-name spellings, since bare names match nothing — into
-  `$HOME/.claude/settings.json` from the environment's setup script.
-  Settings load at startup, so writing that file mid-session does nothing
-  for that session; if calls are prompting, say so once and carry on.
+  fix them.** Copy what the unattended loop actually performs into
+  `$HOME/.claude/settings.json`, from the environment's setup script: the
+  scheduler entries — the MCP ones and `ScheduleWakeup`, which is not one —
+  the GitHub MCP entries, reads and writes both, and `Bash(git push:*)`,
+  under full MCP identifiers and both server-name spellings, since bare
+  names match nothing. A session rooted above several repos loads none of
+  their repo-local settings, so anything missing from that file stops the
+  watch at a prompt nobody is there to answer — the failure this exists to
+  prevent. The cost is real and the repo owner has taken it: any repo the
+  account opens can then push, comment and merge unprompted. `curl`,
+  `python3` and `git reset` stay repo-local, since the loop never needs
+  them. Settings load at startup, so writing that file mid-session does
+  nothing for that session; if calls are prompting, say so once and carry
+  on.
 - **Poll your own open PRs — every ~5 minutes while CI or the verdict is
   outstanding, ~30 once only a human is left.** Those two are what nothing
   else reports. Never end a turn idle with one of yours open: arm the next
@@ -814,8 +822,10 @@ reply, no offer to correct it. It is not a finding.
 - When a feature has multiple open PRs in a stack, list **every** open PR
   on the feature by URL, one per line — the "View PR" chip sticks to the
   first link and hides the rest (anthropics/claude-code#46625).
-- **Codex is the automated reviewer on this repo** — not Copilot. Its reviews
-  are triggered automatically; you don't request them.
+- **Codex is the automated reviewer on this repo** — not Copilot. Its
+  reviews are triggered automatically; you don't request them, except when
+  nothing has come back five minutes after a push — that means it never
+  picked the push up.
 - **Address Codex comments automatically — don't wait to be asked.** Read each
   one, decide whether it's a real issue or a false positive, and if it's real,
   fix it in the same PR. Fold the fix into the commit it belongs to (rebase /
@@ -832,22 +842,31 @@ reply, no offer to correct it. It is not a finding.
   the SHA and comment count, e.g. `Codex reviewed 87d9f02 — 0 comments`. Tie
   it to the *latest* pushed SHA so a stale review of a superseded commit isn't
   conflated with the current state.
-- **Read the Codex verdict, don't infer it.** `get_reviews` returns each
-  Codex review with a `commit_id` and a `submitted_at` — that is the
-  head-correlated signal, and one whose commit isn't the current head has
-  been superseded. The pass itself is a `+1` reaction on the PR body, or a
-  review comment reporting no findings; either is sufficient, for that head
-  only. `issue_read` flattens reactions to an anonymous count, where `GET
-  /repos/{owner}/{repo}/issues/{n}/reactions` gives each one a `user` and a
-  `created_at`; a page fetch finds the `Useful?` bar instead, which is true
-  on any PR Codex has commented on. `eyes` means it is working; nothing 30
-  minutes after a push means it never started — comment `@codex review`,
-  once per push rather than once per poll. That is also how a stale `+1`
-  gets cleared — a reaction never clears itself — after the same 30 minutes,
-  not instead of them.
-- **A finding can arrive as a top-level PR comment.** `get_review_comments`
-  returns only inline threads, so read `get_comments` too — a P1 sat
-  unanswered for two hours because a sweep of the threads never saw it.
+- **Read the Codex verdict, don't infer it.** It reacts to the PR **body** —
+  `issue_read` → `reactions` — not to a review thread, whose `Useful?` bar a
+  page fetch finds instead and which reads true on any PR Codex has
+  commented on. `eyes` while it reads, `+1` when it finds nothing — or a
+  review reporting no findings, which is the same verdict and names the
+  commit it read. The reaction is revoked as a new push lands, so what you
+  can see belongs to the head you can see: `+1` on green CI is a merge, with
+  nothing further to wait for. A finding is not silence, so the recovery
+  keys on both: nothing at all five minutes after a push — no reaction, no
+  review, no comment — means it never picked the push up; comment `@codex
+  review`, once. A review that *finds* something leaves no reaction at all,
+  so a sweep of reactions alone reads a PR with findings waiting on it as an
+  empty one: read `get_review_comments` and `get_comments` every poll. An
+  unresolved finding blocks the merge whatever the reaction says; one you
+  have answered or fixed does not. Check who left each — the reaction count
+  is anonymous, so leave PR-body reactions to Codex, and a human's review
+  carries the same `commit_id` as Codex's.
+- **Read findings to the last page, and in both places.**
+  `get_review_comments` returns only inline threads, so a top-level comment
+  is invisible to it — read `get_comments` too. Both, and `get_reviews`,
+  page oldest first, so the newest is on the LAST page: `hasNextPage` is the
+  only thing that says you have seen it. Reading a middle page as the latest
+  is how a P1 sat unanswered for two hours, how a second one went unseen
+  while its PR was merged, and how a superseded review got reported as the
+  current verdict.
 - Never leave a review comment thread silently dismissed. Either reply on
   the thread *or* resolve it. When you think a comment is a false positive,
   say *why* on the thread (one or two sentences). Acknowledgement noise

@@ -1,0 +1,56 @@
+# Translates Codex's review verdict into a commit status branch protection
+# can require. Codex posts no check run, and a clean pass is only a reaction
+# on the PR body — which emits no webhook — so this polls rather than reacting
+# to an event. See scripts/codex-verdict.mjs.
+#
+# Scheduled workflows only run from the default branch, so this does nothing
+# until it is merged to main.
+name: codex-verdict
+
+# Schedule only. `workflow_dispatch` took a ref, and GitHub runs the workflow
+# file *from that ref* — so a branch could ship its own version of this job,
+# keep the `statuses: write` token, and publish `codex: success` for itself.
+# Pinning the checkout doesn't help when the branch supplies the steps.
+#
+# Five minutes is GitHub's floor and the interval is load-bearing twice over:
+# it bounds how long a hold (👀 / 👎) can sit unnoticed on a head that already
+# has `codex: success`, and it is dead time on every merge between Codex's 👍
+# and the gate opening. Raising it trades both away — on a private repo the
+# ~3,600 min/month would need it, but this one is public and Actions minutes
+# are free.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+
+# Enough to read the open PRs and write the status, and nothing else. This job
+# runs no dependency code — no `npm ci`, no lifecycle scripts — so the write
+# scope never sits in the same process as third-party code.
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: codex-verdict
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Pinned to the default branch rather than the dispatched ref. A
+          # manual run lets the caller pick a branch, and checkout follows it —
+          # which would run that branch's copy of the sweep with a token that
+          # can write `codex: success`, letting a PR approve itself. A
+          # scheduled run is already on the default branch; this is what makes
+          # the dispatched one behave the same.
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/codex-verdict.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

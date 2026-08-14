@@ -845,6 +845,9 @@ reply, no offer to correct it. It is not a finding.
   once per push rather than once per poll. That is also how a stale `+1`
   gets cleared — a reaction never clears itself — after the same 30 minutes,
   not instead of them.
+- **A finding can arrive as a top-level PR comment.** `get_review_comments`
+  returns only inline threads, so read `get_comments` too — a P1 sat
+  unanswered for two hours because a sweep of the threads never saw it.
 - Never leave a review comment thread silently dismissed. Either reply on
   the thread *or* resolve it. When you think a comment is a false positive,
   say *why* on the thread (one or two sentences). Acknowledgement noise

@@ -593,6 +593,14 @@ stopped biting.
 - **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR → merge
   via rebase or squash. One topic per branch. Follow-up work after a merge
   goes on a new branch. Never commit to `main` / `master`.
+- **Never open a PR on a commit that already carried one.** The `codex`
+  status belongs to the commit, not the PR, and records nothing about which
+  PR earned it — so a PR opened on the byte-identical head of a closed one
+  inherits its verdict and can merge on a review of different work. Push a
+  commit, or branch from a moving base, so the new PR has a head of its own.
+  `codex-verdict-reset.yml` writes `pending` on open and reopen, but it is an
+  Actions job racing merge eligibility, so treat it as the backstop and this
+  rule as the fix.
 - **The PR title carries the same prefix as a commit subject** (see *Commit
   messages*), judged over the whole branch rather than any one commit, and
   re-judged on every push — a branch can start documentation-only and stop

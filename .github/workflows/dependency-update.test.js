@@ -459,6 +459,17 @@ describe('dependency-update workflow', () => {
     expect(update).not.toContain('GH_TOKEN');
   });
 
+  it('arms auto-merge behind the required checks, non-fatally', () => {
+    // The merge gate does the reviewing — the ruleset requires ci, codex,
+    // and Vercel — so arming can only remove toil: a gate that never opens
+    // leaves the weekly PR exactly as before, open and assigned. Non-fatal
+    // because the PR already exists by this point, and a repo without
+    // auto-merge allowed must fall back to manual, not lose the step.
+    const publish = workflow.slice(workflow.indexOf('  publish:'));
+    expect(publish).toContain('gh pr merge --auto --rebase "$branch"');
+    expect(publish).toMatch(/if ! gh pr merge --auto --rebase "\$branch"/);
+  });
+
   it('starts CI on the branch it opens', () => {
     // A PR opened by `GITHUB_TOKEN` does not trigger `on: pull_request` — so
     // without an explicit dispatch the weekly PR carries no CI at all, and a PR

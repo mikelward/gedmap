@@ -183,7 +183,11 @@ stopped biting.
   only ever appears in the repo's PR list, which is exactly where an unattended
   job's output goes unnoticed. That step is deliberately non-fatal — the branch
   is already pushed by the time it runs, so a refused review request must not
-  turn an opened PR into no PR.
+  turn an opened PR into no PR. **The publish job also arms auto-merge
+  (rebase) on the PR**: the ruleset's required checks — ci, codex, Vercel —
+  are the reviewers, so a clean batch lands unattended and a gate that never
+  opens leaves the PR as before, open and assigned. Non-fatal too, for the
+  same reason.
   **Weekly rather than monthly is a volume decision, not a freshness one**:
   `.npmrc`'s `min-release-age` still holds every resolution back 5 days, so a
   weekly cadence takes the same versions sooner in smaller batches, and a

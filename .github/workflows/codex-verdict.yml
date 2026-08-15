@@ -12,12 +12,21 @@ name: codex-verdict
 # keep the `statuses: write` token, and publish `codex: success` for itself.
 # Pinning the checkout doesn't help when the branch supplies the steps.
 #
-# Five minutes is GitHub's floor and the interval is load-bearing twice over:
-# it bounds how long a hold (👀 / 👎) can sit unnoticed on a head that already
-# has `codex: success`, and it is dead time on every merge between Codex's 👍
-# and the gate opening. Raising it trades both away — on a private repo the
-# ~3,600 min/month would need it, but this one is public and Actions minutes
-# are free.
+# Five minutes is GitHub's floor, and asking for it is not the same as getting
+# it. Measured over the first eight hours on `main`: 30 runs, a median gap of
+# 14 minutes and a worst of 37 — 3.7 an hour against the 12 requested. GitHub
+# throttles scheduled workflows and says so, and there is no interval that
+# buys more; `*/5` is a request for the best it will give.
+#
+# So the numbers this interval was justified by are the requested ones, not
+# the real ones. What it actually bounds — how long a hold (👀 / 👎) can sit
+# unnoticed on a head that already has `codex: success`, and the dead time
+# between Codex's 👍 and the gate opening — is a median of ~14 minutes and can
+# be half an hour. The event-driven reset is unaffected, and it is what the
+# marker ordering depends on.
+#
+# The cost is correspondingly lower than the estimate: ~1,300 min/month rather
+# than ~3,600, free on a public repo and inside a private one's tier.
 on:
   schedule:
     - cron: '*/5 * * * *'

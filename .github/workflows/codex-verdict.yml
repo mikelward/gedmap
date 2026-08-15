@@ -105,8 +105,9 @@ on:
 # the branch-born suite dates a fast-forward transition the timeline never
 # records, and the earliest suite dates a head whose CI writes no commit
 # statuses — see checkSuiteBirths; fork heads carry no head_branch on their
-# suites, so cross-repository PRs keep the status-only bound as a documented
-# residual), and write the status; nothing else. This job runs no dependency code — no `npm ci`, no
+# suites, so a fork PR's 👍 never opens this gate — an admin override or a
+# same-repo re-push is the path for fork contributions), and write the
+# status; nothing else. This job runs no dependency code — no `npm ci`, no
 # lifecycle scripts — so the write scope never sits in the same process as
 # third-party code.
 permissions:

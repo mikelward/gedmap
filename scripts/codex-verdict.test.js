@@ -902,10 +902,12 @@ describe("sweep", () => {
     expect(out.written[0].state).toBe("pending");
   });
 
-  it("keeps the status bound for a fork head, whose suites never name a branch", async () => {
+  it("fails closed for a fork head, whose suites never name a branch", async () => {
     // GitHub reports head_branch: null for suites on cross-repository
-    // heads, so the branch test would block every fork PR permanently.
-    // They keep the status-only bound — the documented residual.
+    // heads, so nothing ever dates a fork head's transition — and an
+    // exemption that fell back to the status bound let a fast-forwarded
+    // fork head inherit the previous head's 👍. Fork contributions merge
+    // by admin override or a same-repo re-push; this gate stays closed.
     const fake = fakeFetch({
       statuses: { abc1234: [
         gate("2026-08-14T12:00:00Z"),
@@ -918,7 +920,44 @@ describe("sweep", () => {
       })])],
     });
     const out = await runFull(fake);
-    expect(out.written[0].state).toBe("success");
+    expect(out.awaiting).toBe(1);
+    expect(out.written).toEqual([]);
+  });
+
+  it("reopens the wait on a nudge tied with the 👍 to the second", async () => {
+    // GitHub stamps to the second; a nudge in the same second as the
+    // standing 👍 is an unresolved ordering, and ambiguity must not be
+    // what leaves a success open for auto-merge.
+    const fake = fakeFetch({
+      statuses: { abc1234: [gate("2026-08-14T12:00:00Z")] },
+      checkSuites: { abc1234: [bornSuite()] },
+      issueComments: { 1: [{ user: { login: OWNER }, created_at: AFTER, body: "@codex review" }] },
+      graphqlResponses: [repoPRs([prNode({ reactions: page([thumbs(undefined, AFTER)]) })])],
+    });
+    const out = await runFull(fake);
+    expect(out.awaiting).toBe(1);
+    expect(out.written).toEqual([]);
+  });
+
+  it("re-anchors a would-park head on its branch-born suite", async () => {
+    // A fast-forward can land a head already wearing an identical old
+    // PENDING: no reaction, so the suites were never read; no write, so
+    // nothing refreshed the anchor — and the head would park on its first
+    // sweep, before Codex's pickup window opens. The would-park path pays
+    // one suites call and finds the arrival's own record.
+    const at = (suiteAt, t) => sweep({
+      owner: OWNER, name: "r", token: "t",
+      fetchImpl: fakeFetch({
+        statuses: { abc1234: [gate("2026-08-14T11:40:00Z")] },
+        checkSuites: { abc1234: [{ created_at: suiteAt, head_branch: "claude/topic" }] },
+        graphqlResponses: [repoPRs([prNode()])],
+      }).impl,
+      log: () => {}, now: () => Date.parse(t),
+    });
+    // The suite says the head arrived two minutes ago: keep the clock.
+    expect((await at("2026-08-14T12:04:00Z", "2026-08-14T12:06:00Z")).awaiting).toBe(1);
+    // An old suite corroborates the old marker: park.
+    expect((await at("2026-08-14T11:39:00Z", "2026-08-14T12:06:00Z")).awaiting).toBe(0);
   });
 
   it("keeps the rescue from lowering the bound past the branch-born suite", async () => {

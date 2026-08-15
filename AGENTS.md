@@ -602,9 +602,10 @@ stopped biting.
   PR earned it — so a PR opened on the byte-identical head of a closed one
   inherits its verdict and can merge on a review of different work. Push a
   commit, or branch from a moving base, so the new PR has a head of its own.
-  The verdict sweep (`codex-verdict.yml`) resets the status to `pending`
-  within about a minute of the PR opening, but that is an Actions job racing
-  merge eligibility, so treat it as the backstop and this rule as the fix.
+  The verdict sweep (`codex-review.yml`, running the shared
+  mikelward/codex-review action) resets the status to `pending` within about
+  a minute of the PR opening, but that is an Actions job racing merge
+  eligibility, so treat it as the backstop and this rule as the fix.
 - **The PR title carries the same prefix as a commit subject** (see *Commit
   messages*), judged over the whole branch rather than any one commit, and
   re-judged on every push — a branch can start documentation-only and stop

@@ -535,7 +535,7 @@ jobs:
           # Arm auto-merge, so a clean batch lands with no human in the loop.
           # The merge gate does the reviewing: the ruleset requires ci (the
           # dispatched full suite), codex (Codex's review verdict, translated
-          # to a status by codex-verdict.yml), and the Vercel build — so the
+          # to a status by codex-review.yml), and the Vercel build — so the
           # batch merges only after all three pass, and a bad batch that
           # builds locally still cannot reach production past a red deploy.
           # The asymmetry is what makes this safe to arm unconditionally: a

@@ -22,7 +22,7 @@
 // what the reaction already says, and two of its bugs pointed the same way:
 // approving without a verdict.
 //
-// Human review threads are deliberately not modelled: GitHub's "require
+// Human review threads are deliberately not modeled: GitHub's "require
 // conversation resolution" setting does that natively, and better.
 //
 // Reactions run the other way too. Approval is Codex's 👍 *and* no 👀 and no

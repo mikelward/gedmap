@@ -531,3 +531,20 @@ jobs:
             echo "Could not assign or request review from @$reviewer — the PR is open and needs a look." \
               >> "$GITHUB_STEP_SUMMARY"
           fi
+
+          # Arm auto-merge, so a clean batch lands with no human in the loop.
+          # The merge gate does the reviewing: the ruleset requires ci (the
+          # dispatched full suite), codex (Codex's review verdict, translated
+          # to a status by codex-verdict.yml), and the Vercel build — so the
+          # batch merges only after all three pass, and a bad batch that
+          # builds locally still cannot reach production past a red deploy.
+          # The asymmetry is what makes this safe to arm unconditionally: a
+          # gate that never opens leaves the PR exactly where it was before
+          # this step existed — open, assigned, awaiting the owner — so the
+          # arming can only remove toil, never review. Non-fatal for the
+          # same reason as the review request above: the PR already exists,
+          # and repos without auto-merge allowed just fall back to manual.
+          if ! gh pr merge --auto --rebase "$branch"; then
+            echo "Could not arm auto-merge — the PR is open and waits for a manual merge." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi

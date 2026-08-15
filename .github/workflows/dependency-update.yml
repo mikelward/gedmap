@@ -268,7 +268,7 @@ jobs:
           # The allowlist is build OUTPUTS, measured rather than guessed: a full
           # suite run leaves `dist/` and `node_modules/` here, plus
           # `*.tsbuildinfo` in newshacker and `coverage/` in gedmap. The near
-          # neighbours the .gitignore already names (`dist-ssr`, `dev-dist`) are
+          # neighbors the .gitignore already names (`dist-ssr`, `dev-dist`) are
           # listed too, so a build-config change does not stop the run over an
           # artifact nobody planted. Anything else ignored is something new in
           # the tree, and worth a human look.
@@ -342,7 +342,7 @@ jobs:
         with:
           name: dependency-update
 
-      # The artifact travelled through a machine that ran dependency code, so
+      # The artifact traveled through a machine that ran dependency code, so
       # check it against the fingerprints taken before any of it ran. Those
       # came across as job outputs, which live in the runner's control plane
       # rather than on that machine's disk.

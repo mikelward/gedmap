@@ -848,18 +848,18 @@ reply, no offer to correct it. It is not a finding.
   arrive as review comments, as a top-level comment, or as a review — read
   `get_review_comments`, `get_comments` and `get_reviews` to the last page,
   since all three page oldest first — and they block the merge until fixed
-  or rebutted; an acknowledgement is not an answer. Nothing from Codex since
+  or rebutted; an acknowledgment is not an answer. Nothing from Codex since
   the push, five minutes on, means it never picked it up — comment `@codex
   review`, once.
 - Never leave a review comment thread silently dismissed. Either reply on
   the thread *or* resolve it. When you think a comment is a false positive,
-  say *why* on the thread (one or two sentences). Acknowledgement noise
+  say *why* on the thread (one or two sentences). Acknowledgment noise
   is fine and preferred over silence.
 - **Skip echo events silently.** `mcp__github__add_reply_to_pull_request_comment`
   / `add_issue_comment` post under whichever GitHub identity backs the MCP
   auth, so a moment after you post a reply the same body comes back as a
   webhook event authored by that identity. That's your own echo, not user
-  feedback — continue without a chat-side acknowledgement. The test is "did
+  feedback — continue without a chat-side acknowledgment. The test is "did
   *I* just post this body?", not "who is the author?".
 - **Canceling the watch**: see the polling bullet under **Autonomy**.
 

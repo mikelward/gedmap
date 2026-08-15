@@ -575,8 +575,10 @@ export async function codexStatuses(api, { owner, name, sha }) {
  * transition — the floor that keeps the previous head's lingering 👍 from
  * approving a commit nobody reviewed. Fetched only when a 👍 is in play
  * (see `judge`), so an ordinary sweep never pays the call. `head_branch`
- * is a bare branch name — GitHub reports null for fork heads, which is why
- * `judge` exempts cross-repository PRs from the branch test.
+ * is a bare branch name — GitHub reports null for fork heads, so a fork
+ * head never yields a `forBranch` and `judge` fails it closed: its 👍
+ * cannot open the gate, and fork contributions merge by admin override or
+ * a same-repo re-push.
  */
 export async function checkSuiteBirths(api, { owner, name, sha, branch, since }) {
   let any = null;
@@ -694,8 +696,9 @@ export async function sweep({
     // a suite born BEFORE a slow status rescues a genuine 👍 the statuses
     // date too late. Suites are fetched only in those two cases, so an
     // ordinary sweep never pays the call.
+    let births = null;
     if (!sharedHead && (seen.approved || seen.staleApproval)) {
-      const births = await checkSuiteBirths(api, {
+      births = await checkSuiteBirths(api, {
         owner, name, sha: node.headRefOid, branch: node.headRefName, since: movedAt,
       });
       // A same-repo head always earns a suite on its own branch within
@@ -706,11 +709,15 @@ export async function sweep({
       // its first branch suite. Whether the commit's OLD records are suites
       // or only statuses changes nothing, so no suites at all is the same
       // undatable gap, not a pass. Fail closed and let the next sweep read
-      // the suite that is about to exist. Fork heads are exempt: GitHub
-      // reports no head_branch for their suites, ever, so this test would
-      // block them permanently; they keep the status bound, a residual
-      // documented in the workflow.
-      const undatable = births.forBranch === null && !node.isCrossRepository;
+      // the suite that is about to exist. Fork heads are undatable FOREVER
+      // by this test — GitHub reports no head_branch for their suites — so
+      // a fork PR's 👍 never opens this gate: their fast-forward transition
+      // has no server-stamped record at all, and an earlier exemption that
+      // fell back to the status bound was a fail-open hole wearing a
+      // compatibility excuse. A fork contribution merges by an admin
+      // override or by the owner re-pushing it to a same-repo branch,
+      // where every floor applies.
+      const undatable = births.forBranch === null;
       if (seen.approved) {
         if (births.forBranch !== null) {
           const confirmed = laterOf(bound, births.forBranch);
@@ -786,8 +793,12 @@ export async function sweep({
       // awaiting and the clock runs. Deriving this from the comments on
       // EVERY sweep is what makes it robust: the state survives however
       // the run was started, including a nudge run replaced in the
-      // concurrency queue by a grace-less successor.
-      nudged = Boolean(nudgeAt) && nudgeAt > (answeredAt ?? "");
+      // concurrency queue by a grace-less successor. A TIE reopens it too:
+      // GitHub stamps to the second, so a nudge in the same second as the
+      // standing 👍 is an unresolved ordering, and the ambiguity must not
+      // be what leaves a success open — only an answer strictly newer than
+      // the ask settles it.
+      nudged = Boolean(nudgeAt) && (answeredAt === null || nudgeAt >= answeredAt);
       findings = !approved && Boolean(answeredAt) && !nudged;
     }
     const verdict = verdictFor({
@@ -820,10 +831,25 @@ export async function sweep({
     // identical-write skip in `publish` means nothing refreshes the anchor
     // while the state stands still, so the window cannot self-extend.
     if (changed) return 1;
-    const waitedSince = laterOf(bound, nudgeAt, utc(mine[0]?.created_at));
+    let waitedSince = laterOf(bound, nudgeAt, utc(mine[0]?.created_at));
     if (!waitedSince) return 1;
-    const ms = Date.parse(waitedSince);
+    let ms = Date.parse(waitedSince);
     if (Number.isNaN(ms)) return 1;
+    if (now() - ms < UNANSWERED_MINUTES * 60_000) return 1;
+    // Looks expired — but a fast-forward can land a head already carrying
+    // an identical old PENDING from a previous life, and then nothing
+    // above refreshed the anchor: no reaction means the suites were never
+    // read, publish skipped the identical write, and the head would park
+    // on its first sweep, before Codex's pickup window even opens. One
+    // suites call, paid only on this would-park path, re-anchors the age
+    // on the branch-born suite — the arrival's own record.
+    if (births === null && node.headRefName) {
+      births = await checkSuiteBirths(api, {
+        owner, name, sha: node.headRefOid, branch: node.headRefName, since: movedAt,
+      });
+    }
+    waitedSince = laterOf(waitedSince, births?.forBranch);
+    ms = Date.parse(waitedSince);
     return now() - ms >= UNANSWERED_MINUTES * 60_000 ? 0 : 1;
   }
 

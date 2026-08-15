@@ -49,6 +49,24 @@
 export const CODEX_BOT = "chatgpt-codex-connector";
 export const CONTEXT = "codex";
 
+/**
+ * The pending description — which `codex-verdict-reset.yml` writes too, and
+ * the two have to stay byte-identical.
+ *
+ * `publish` skips the write when state and description both match what is
+ * already on the head, and that skip is what keeps the head's earliest
+ * `codex` status — its gate marker — where it is. Let the two strings drift
+ * and every sweep rewrites the status, the marker moves forward each time,
+ * and no reaction can ever be newer than it: the gate stalls for good, on
+ * every open pull request at once, with nothing failing to say so. A test
+ * reads the workflow and asserts they agree.
+ *
+ * It says *approve* rather than *review* because a head Codex has reviewed
+ * and left findings on sits here too — nothing is waiting for a review by
+ * then, only for the 👍.
+ */
+export const PENDING = "Waiting for Codex to approve this head";
+
 const stripBot = (login) => String(login ?? "").replace(/\[bot\]$/, "");
 export const matchesBot = (login, botLogin = CODEX_BOT) =>
   stripBot(login) === stripBot(botLogin);
@@ -79,7 +97,7 @@ export function verdictFor({ isDraft, approved, sharedHead, held }) {
 
   return approved
     ? { state: "success", description: "Codex reviewed this head, no findings" }
-    : { state: "pending", description: "Waiting for Codex to review this head" };
+    : { state: "pending", description: PENDING };
 }
 
 const PAGE = `pageInfo { hasNextPage endCursor }`;

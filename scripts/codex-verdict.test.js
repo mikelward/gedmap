@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   verdictFor,
+  PENDING,
   matchesBot,
   readReactions,
   sweep,
@@ -15,7 +16,7 @@ describe("verdictFor", () => {
     // The case auto-merge would otherwise race: CI green, Codex silent.
     expect(verdictFor({ approved: false })).toEqual({
       state: "pending",
-      description: "Waiting for Codex to review this head",
+      description: PENDING,
     });
   });
 
@@ -171,7 +172,7 @@ const OWNER = "o";
 // The marker: the earliest `codex` status on the head, saying when it was
 // first gated. A reaction has to be newer than this to count as approval.
 const gate = (created_at = GATED_AT, state = "pending") =>
-  ({ context: CONTEXT, state, description: "Waiting for Codex to review this head", created_at });
+  ({ context: CONTEXT, state, description: PENDING, created_at });
 
 const prNode = (over = {}) => ({
   number: 1,
@@ -234,7 +235,7 @@ describe("sweep", () => {
     // writing that marker is what a later sweep judges a reaction against.
     const fake = fakeFetch({ graphqlResponses: [repoPRs([prNode()])] });
     expect(await run(fake)).toEqual([
-      { number: 1, state: "pending", description: "Waiting for Codex to review this head" },
+      { number: 1, state: "pending", description: PENDING },
     ]);
     const write = fake.calls.find((c) => c.method === "POST" && c.path.includes("/statuses/"));
     expect(write.body).toMatchObject({ context: CONTEXT, state: "pending" });
@@ -432,6 +433,22 @@ describe("codex-verdict-reset workflow", () => {
     expect(perms).toMatch(/statuses:\s*write/);
     expect(perms).not.toMatch(/contents:\s*write/);
     expect(perms).not.toMatch(/pull-requests:\s*write/);
+  });
+
+  it("writes the same pending description the sweep does", () => {
+    // Load-bearing, and silent if it breaks. `publish` skips the write when
+    // state and description both match what is already on the head, and that
+    // skip is what holds the gate marker still. If these two strings drift,
+    // every sweep rewrites the status, the marker advances each time, and no
+    // reaction can ever be newer than it — the gate stalls on every open PR
+    // at once, with nothing going red to say so.
+    expect(yml).toContain(`"description":"${PENDING}"`);
+  });
+
+  it("says approve rather than review", () => {
+    // A head Codex has reviewed and left findings on sits at pending too, so
+    // "waiting to review" names the one thing that has already happened.
+    expect(PENDING).toMatch(/approve/);
   });
 
   it("fails the step when the API call fails", () => {

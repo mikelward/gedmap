@@ -36,8 +36,21 @@ describe('codex-review workflow', () => {
     expect(on).toMatch(/pull_request_target:/);
     expect(on).toMatch(/types: \[opened, reopened, ready_for_review, synchronize, closed\]/);
     expect(on.match(/types: \[created, edited\]/g)).toHaveLength(2);
+    // A verdict submitted as a review with no inline comments emits only
+    // pull_request_review — neither comment event, no reaction — but that
+    // event is merge-ref (the PR supplies the workflow definition), so it
+    // lives on the unprivileged listener and reaches this status-writing
+    // workflow via workflow_run, whose definition always comes from the
+    // default branch. Both halves are asserted by name — renaming one
+    // without the other severs the relay silently.
+    expect(on).toMatch(/workflow_run:\n\s+workflows: \[codex-review-listener\]\n\s+types: \[completed\]/);
     expect(on).not.toMatch(/workflow_dispatch/);
     expect(on).not.toMatch(/pull_request:/);
+    expect(on).not.toMatch(/pull_request_review:/);
+    const listener = read('./codex-review-listener.yml');
+    expect(listener).toMatch(/^name: codex-review-listener$/m);
+    expect(listener).toMatch(/pull_request_review:\n\s+types: \[submitted, edited, dismissed\]/);
+    expect(listener).toMatch(/^permissions: \{\}$/m);
   });
 
   it('keeps the backstop schedule hourly, off the hour', () => {

@@ -722,77 +722,36 @@ reply, no offer to correct it. It is not a finding.
   repo owner's standing request for that PR, so a client-level rule reading
   "open a PR only when the user explicitly asks" is already satisfied — the
   ask is here, and it doesn't need repeating per branch.
-- **The scheduled check is the watch. Unsubscribe from PR activity
-  immediately.** Opening a PR subscribes this session automatically, and in
-  this client every subscribed event — each comment, review, check run, and
-  your own replies echoing back — is rendered into the user's conversation
-  as a raw payload. Nothing you write or refrain from writing changes that:
-  the delivery is the client's, not yours, so it cannot be filtered,
-  softened or skipped from here. The only control is the subscription
-  itself, so call `unsubscribe_pr_activity` for a PR as soon as you open it,
-  and read its state on the scheduled check instead. This reverses an
-  earlier version of this rule that said to keep the subscription and skip
-  the noisy events; that is not possible, and a day was spent proving it.
+- **Watch your own PRs by subscription, plus one scheduled check.** Have a
+  subscription — Claude Code makes one when you open a PR; where a client
+  doesn't, call `subscribe_pr_activity`. It delivers reviews, comments and CI
+  failures. It cannot deliver CI *success*, a push, the merge, Codex's clean
+  verdict (a reaction), or Codex never answering at all — so keep exactly one
+  check armed for as long as the PR is open (each event and each check costs
+  a model turn). Under drive, arm auto-merge at PR open too — but only where
+  the ruleset makes the Codex verdict a required check AND requires
+  conversations resolved: where CI is the only requirement it merges before
+  Codex has answered, and an open review comment holds nothing back on its own.
+  - Settle the fired trigger first thing in the turn, not last. It may have
+    silently re-armed rather than retired — update the one that survived,
+    replace the one that didn't, and end the turn with exactly one pending.
+  - Check the fire time you got against the one you asked for — a 4-minute
+    request has come back as 64. Prefer a relative delay: the scheduler's
+    clock is not this container's, so an absolute time computed here can be
+    rejected as already past. Re-time it, or say the watch isn't armed.
+  - A few minutes out while CI or the current head's Codex verdict is
+    outstanding; longer once only a human is left; short again after a push.
+  - Name the PR, and say what to re-read rather than what you read. A SHA or
+    a list of which PRs are open goes stale before it fires; one PR number
+    does not, and the trigger has to be matchable to it.
+  - Merged or closed, take one last reply-or-resolve pass — a review can
+    land after the merge — then cancel it and unsubscribe. `list_triggers`
+    spans the account, so match this session and this PR before updating
+    or deleting one; an update reschedules whatever it matches as surely
+    as a delete cancels it.
 - **If a scheduler, GitHub or `git push` call prompts, say so once and carry on.**
   Permissions load at session start, so writing a settings file mid-session
   can't fix the session you're in.
-- **Poll your own open PRs: every 4 minutes while a verdict is outstanding,
-  ~30 once it lands.** With no subscription the check is the only thing that
-  reports. Four is measured rather than guessed — Codex answers 2 to 5
-  minutes after a push, so a check on that interval catches it within one,
-  and a check that finds nothing ends the turn with no reply. Don't let the
-  interval decay as it waits: lateness does not mean wait longer, because
-  Codex either answers within those few minutes or never started, and the
-  answer to never-started is the nudge in the verdict rule, not a longer
-  wait. Once the verdict is in and only a human is left, drop to ~30. Never
-  end a turn idle with one of yours open: arm the next check with whatever
-  the client offers (`send_later`, a scheduled task / cron, `/loop`), and
-  arm it *without asking*. Someone else's PR is not your polling job unless
-  you're asked. Merged or closed is terminal: take one more check for CI and
-  Codex on the final head, settle for what's known if a report may never
-  land, then run a last reply-or-resolve pass and cancel the pending
-  trigger. Open a follow-up PR, with its own watch, for anything a merged
-  one still needs.
-- **What the polling costs.** A verdict normally costs one or two checks;
-  after that, two wake-ups an hour per PR while a human is the only thing
-  left. Each is a model turn and a few GitHub API calls — a few tens of
-  cents an hour, against roughly a dollar under the old standing five-minute
-  loop. The calls themselves are free, well inside the 5,000/hour
-  authenticated limit. The scheduler is the single point of failure: one
-  missed re-arm ends the watch silently, with no error anywhere. If you
-  can't arm the next check, say so in the reply rather than leaving a PR
-  that looks watched and isn't.
-- **One pending check per PR, settled at the top of the turn.** Two chains
-  each re-arming themselves double the cost every time a webhook starts a
-  turn while one is already pending; parking the re-arm at the *end* of the
-  turn loses it when the turn is interrupted, which once left a PR unwatched
-  for two hours. So settle it first, and settle it to exactly one: leave a
-  correctly-timed check alone — pushing its deadline forward every turn is
-  how a busy PR never gets polled — and when it's missing, already fired, or
-  mis-timed, either `update_trigger` it in place or arm the replacement
-  before deleting the old, because an overlap beats a gap. Then diagnose,
-  fix, and reply.
-- **A `send_later` one-shot re-arms itself +24h**, so "check in 5 minutes"
-  silently becomes daily. Never leave a fired trigger to expire on its own, and
-  check that the fire time it returned is the one you asked for — a five-minute
-  request came back as a hundred once, saying nothing — and re-time it until it
-  is, or say in the reply that the watch is running at the wrong cadence.
-  Reading the wrong answer and accepting it is the same silence.
-- **`list_triggers` spans every session on the account.** Narrow it to this
-  session's `persistent_session_id`, then to the trigger you actually mean (its
-  own id, once the PR its prompt names has narrowed the field), before updating
-  *or* deleting one — an update reschedules whatever it matches as surely as a
-  delete cancels it. If that filter turns up more than one, the extras are
-  duplicate chains: keep one and delete the rest.
-- **Never name a SHA — or a list of PR numbers — in the check prompt.** Both
-  are written before the work they describe, so both are stale when it
-  fires, and a queued firing carries the prompt as it was when it was
-  queued: editing it mid-turn does not reach a check already on its way.
-  Name what to re-read.
-- **The scheduler's clock is not this container's.** An absolute
-  `run_once_at` computed from `date` here can be rejected as already past —
-  prefer a relative delay where the client offers one, or read the
-  scheduler's clock and leave margin.
 - **"Drive" means run the loop automatically**: pick the next task,
   implement it, open the PR, wait for the automatic Codex review, address
   every comment, merge once CI is green and Codex's verdict for the current
@@ -886,13 +845,12 @@ reply, no offer to correct it. It is not a finding.
   webhook event authored by that identity. That's your own echo, not user
   feedback — continue without a chat-side acknowledgment. The test is "did
   *I* just post this body?", not "who is the author?".
-- **Canceling the watch**: see the polling bullet under **Autonomy**.
-
 ## CI
 
 - After pushing, **wait for CI** before claiming a change works in any
   environment you can't test locally. Don't busy-poll inside the turn — the
-  scheduled PR check under *Autonomy* is what brings the result back.
+  subscription carries a failure, and success is what the scheduled check is
+  for.
 - Report significant CI timing regressions (rule of thumb: >25% or >30s
   on a job under ~5min). Name the likely cause: heavy new dependency,
   slow new test, cache invalidation.

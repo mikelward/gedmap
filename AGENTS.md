@@ -744,8 +744,12 @@ reply, no offer to correct it. It is not a finding.
   - Name the PR, and say what to re-read rather than what you read. A SHA or
     a list of which PRs are open goes stale before it fires; one PR number
     does not, and the trigger has to be matchable to it.
-  - Merged or closed, take one last reply-or-resolve pass — a review can
-    land after the merge — then cancel it and unsubscribe. `list_triggers`
+  - Merged or closed, take one last reply-and-resolve pass — a review can
+    land after the merge. Nothing is holding the PR now, so on a merged one
+    anything real goes to a follow-up PR, named on the thread, before you
+    resolve it; leaving it open records the work nowhere. A closed-unmerged
+    PR is a stop — the work was abandoned, so answer, resolve, and open
+    nothing. Then cancel the check and unsubscribe. `list_triggers`
     spans the account, so match this session and this PR before updating
     or deleting one; an update reschedules whatever it matches as surely
     as a delete cancels it.
@@ -835,8 +839,9 @@ reply, no offer to correct it. It is not a finding.
   or rebutted; an acknowledgment is not an answer. Nothing from Codex since
   the push, five minutes on, means it never picked it up — comment `@codex
   review`, once.
-- Never leave a review comment thread silently dismissed. Either reply on
-  the thread *or* resolve it. When you think a comment is a false positive,
+- Never leave a review comment thread silently dismissed. Answer on the thread — a
+  disagreement is an answer, so say why — then resolve it once the fix is on the
+  head or the point is rebutted; anything still to do stays open. When you think a comment is a false positive,
   say *why* on the thread (one or two sentences). Acknowledgment noise
   is fine and preferred over silence.
 - **Skip echo events silently.** `mcp__github__add_reply_to_pull_request_comment`

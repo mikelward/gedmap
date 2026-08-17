@@ -20,6 +20,7 @@ const read = (relative) =>
 
 const workflow = read('./dependency-update.yml');
 const ci = read('./ci.yml');
+const consumerCheck = read('./codex-review-check.yml');
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 describe('dependency-update workflow', () => {
@@ -509,6 +510,37 @@ describe('dependency-update workflow', () => {
       workflow.indexOf('  publish:'),
     );
     expect(update).not.toContain('actions: write');
+  });
+
+  it('starts the consumer check on the branch it opens', () => {
+    // The same loop-prevention rule, and this one is worse: `ci.yml` at least
+    // has this dispatch, while codex-review-check.yml's own triggers are
+    // `push` and `pull_request_target` — both suppressed for a
+    // GITHUB_TOKEN-authored PR — and unlike the `codex` sweep it has no
+    // schedule to fall back on. So once the ruleset requires that check, a
+    // weekly batch without this dispatch would block forever, with the
+    // auto-merge this job arms never firing.
+    const publish = workflow.slice(workflow.indexOf('  publish:'));
+    expect(publish).toContain('gh workflow run codex-review-check.yml --ref "$branch"');
+    // Dispatchable at all only because the template carries the trigger, and
+    // only from the copy on the DEFAULT branch — a workflow GitHub cannot see
+    // there is not dispatchable however the branch under test spells it.
+    expect(consumerCheck).toMatch(/^\s*workflow_dispatch:/m);
+
+    // Same PR-body rule as CI: dispatched before the body is composed, and a
+    // failure said on the PR rather than only in the run summary.
+    expect(publish.indexOf('gh workflow run codex-review-check.yml')).toBeLessThan(
+      publish.indexOf('} > body.md'),
+    );
+    expect(publish).toContain('**`codex-review-check` could not be dispatched**');
+
+    // Reported OUTSIDE the ci_started branch. They are separate workflows and
+    // either can fail alone, so nesting this note under a successful CI
+    // dispatch would let a failed CI dispatch hide a failed check dispatch.
+    const ciElse = publish.indexOf('**CI could not be started on this branch');
+    expect(publish.indexOf('**`codex-review-check` could not be dispatched**')).toBeGreaterThan(
+      ciElse,
+    );
   });
 
   it('dispatches CI that cannot write to the repo', () => {

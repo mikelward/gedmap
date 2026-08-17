@@ -45,26 +45,26 @@ explained in the shared `docs/CONSUMER.md`: require
 date before merging. Deliberately a follow-up — requiring a check in the same
 change that installs it would block the change that installs it.
 
-**Requiring `codex-review-check` has a precondition here that the other
-consumers do not have, and getting it wrong would stall the weekly dependency
-batch permanently.** A pull request created by `GITHUB_TOKEN` does not trigger
-`on: pull_request`-family workflows — GitHub's loop-prevention rule, with no
-per-repository opt-out — and that covers the branch `push` as well as
-`pull_request_target`. `codex-review-check.yml` has only those two triggers, so
-the weekly `dependency-update.yml` pull request would carry no run of it at
-all, and a required check that never reports blocks the merge forever. The
-auto-merge that job arms would never fire, and an unattended job's output would
-sit open with nothing saying why.
+**The precondition that used to sit here is satisfied, and this note records
+why it existed so it is not reintroduced.** A pull request created by
+`GITHUB_TOKEN` does not trigger `on: pull_request`-family workflows — GitHub's
+loop-prevention rule, with no per-repository opt-out — and that covers the
+branch `push` as well as `pull_request_target`. `codex-review-check.yml` had
+only those two triggers, so the weekly `dependency-update.yml` pull request
+would have carried no run of it at all: requiring the check would have blocked
+that merge forever, with the auto-merge the job arms never firing and an
+unattended job's output sitting open with nothing saying why.
 
-The `codex` status is not exposed the same way, which is why requiring it
-already works: the sweep also runs on a `schedule`, so it reaches those pull
-requests within the hour even when no event does.
+The `codex` status was never exposed the same way, which is why requiring it
+already worked: the sweep also runs on a `schedule`, so it reaches those pull
+requests within the hour even when no event does. The check has no such
+backstop, which is what made it specific to this repository.
 
-The fix is the same shape as the one already in `dependency-update.yml` for
-`ci.yml` — `workflow_dispatch` is the documented exception to that rule, and a
-dispatch made with `GITHUB_TOKEN` does create a run. It needs both halves:
-`workflow_dispatch` added to the `codex-review-check.yml` **template**
-upstream, since the file here is pinned byte for byte and a local edit fails
-the check; and a dispatch step in the publish job, which already holds
-`actions: write` for the `ci.yml` dispatch. Do that before requiring the check,
-not after. Raised by Codex on the pull request that installed these files.
+Both halves are now in place. `workflow_dispatch` is on the shared
+`codex-review-check.yml` template (`mikelward/codex-review#16`), and the
+publish job dispatches it beside `ci.yml` using the `actions: write` scope it
+already held. A failed dispatch is reported in the pull request body rather
+than only the run summary, and outside the CI branch, so a failed CI dispatch
+cannot hide it. `dependency-update.test.js` pins the call, the trigger, the
+ordering against body composition, and that separation. Raised by Codex on the
+pull request that installed these files.

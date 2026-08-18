@@ -50,7 +50,7 @@ why it existed so it is not reintroduced.** A pull request created by
 `GITHUB_TOKEN` does not trigger `on: pull_request`-family workflows — GitHub's
 loop-prevention rule, with no per-repository opt-out — and that covers the
 branch `push` as well as `pull_request_target`. `codex-review-check.yml` had
-only those two triggers, so the weekly `dependency-update.yml` pull request
+only those two triggers, so the weekly `npm-update.yml` pull request
 would have carried no run of it at all: requiring the check would have blocked
 that merge forever, with the auto-merge the job arms never firing and an
 unattended job's output sitting open with nothing saying why.
@@ -65,6 +65,6 @@ Both halves are now in place. `workflow_dispatch` is on the shared
 publish job dispatches it beside `ci.yml` using the `actions: write` scope it
 already held. A failed dispatch is reported in the pull request body rather
 than only the run summary, and outside the CI branch, so a failed CI dispatch
-cannot hide it. `dependency-update.test.js` pins the call, the trigger, the
+cannot hide it. `npm-update.test.js` pins the call, the trigger, the
 ordering against body composition, and that separation. Raised by Codex on the
 pull request that installed these files.

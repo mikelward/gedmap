@@ -172,7 +172,7 @@ stopped biting.
 ## Dependency updates
 
 - **Dependency updates are one batched PR a week**, from
-  `.github/workflows/dependency-update.yml`. It runs `npm update --save` early
+  `.github/workflows/npm-update.yml`. It runs `npm update --save` early
   on Saturdays, and on demand from the Actions tab (*Run workflow*), so every
   dependency moves to the newest version its **existing range** allows. The
   branch and PR title are keyed on the **run date**, not the month — a
@@ -199,7 +199,7 @@ stopped biting.
   range change from the diff and stops the run on a crossing, so nothing you
   declare can cross a major. A *subdependency* whose own range is `*` or
   `>=x` can, without anything appearing in the `package.json` diff, and
-  `scripts/check-dependency-update.mjs` is what covers that.
+  `scripts/check-npm-update.mjs` is what covers that.
 - **The lockfile check asks each CONSUMER what it resolves; it does not match
   instances across the two trees.** Getting here cost fifteen review rounds,
   almost all of them spent on the design this replaced, so the dead end is
@@ -327,7 +327,7 @@ stopped biting.
   than a `node -e` string in the YAML for a reason that already bit: a
   single-quoted shell argument ends at the first apostrophe, and one in a
   comment silently truncated the program to valid JavaScript that exited 0
-  with half its rules gone. `scripts/check-dependency-update.test.js` covers
+  with half its rules gone. `scripts/check-npm-update.test.js` covers
   the shapes (in-place bump, hoist, benign dedupe, a dedupe that carries a
   crossing, a newly added copy that carries one, consumers redistributing
   across copies that all survive, a dropped dependency and a newly added
@@ -353,7 +353,7 @@ stopped biting.
   `--ignored` collapses a fully-ignored directory to a single entry, which is
   what makes looking at them at all affordable. The allowlist is build outputs,
   measured by running the suite in each repo rather than guessed, and
-  `dependency-update.test.js` pins both the second call and the
+  `npm-update.test.js` pins both the second call and the
   don't-combine-the-flags rule. Two things in
   the workflow are load-bearing, both guarding failures that would otherwise
   be silent:
@@ -394,7 +394,7 @@ stopped biting.
     write. Nothing changes for ordinary
     PRs: `on: pull_request` already covers every human-authored one, and this
     only fills the hole under the bot.
-  - **`dependency-update.test.js` asserts those checks stay in step with
+  - **`npm-update.test.js` asserts those checks stay in step with
     `ci.yml`.** Add a step to one and not the other and the weekly PR is
     quietly verified by a weaker suite than `main`, looking identical either
     way. It also pins the `.nvmrc`-as-single-source rule, `workflow_dispatch`
@@ -581,7 +581,7 @@ stopped biting.
 - **`deps:` is what earns the rule here**: 33 of the last 50 commits are the
   weekly batch, every one reading `Update dependencies (<date>)`, so the log's
   dominant line says nothing about whether the app changed.
-  `.github/workflows/dependency-update.yml` writes the prefix itself. A bump
+  `.github/workflows/npm-update.yml` writes the prefix itself. A bump
   taken *because* of the behavior it changes is a behavior change — bare, and
   say what changed.
 - **`TODO.md` and `spec.md` ride along and never decide the prefix** — either

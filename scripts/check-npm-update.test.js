@@ -19,7 +19,11 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   NODE_ARCH,
@@ -32,7 +36,7 @@ import {
   resolveEdge,
   updateSummary,
   workspacePaths,
-} from './check-dependency-update.mjs'
+} from './check-npm-update.mjs'
 
 const pkg = (version, deps) => ({
   version,
@@ -1503,5 +1507,74 @@ describe('updateSummary', () => {
       lockAfter: treeShape,
     })
     expect(out).toContain('No package changes recorded.')
+  })
+})
+
+// The CLI resolves manifests relative to the WORKING DIRECTORY (`HEAD:./…`),
+// which is what lets one checked-in script serve a repository whose npm tree
+// lives in a subdirectory — clothescast's functions/ backend is the consumer
+// that needed it. This repository's own tree is at the root, so the fix is a
+// no-op here in practice, but a real git repository is the only honest
+// fixture for the regression it pins: the pathspec's cwd-relativity, which a
+// repo-rooted `HEAD:package.json` would satisfy identically at the root while
+// failing from any nested directory.
+describe('the CLI run from a nested npm tree', () => {
+  const CLI = fileURLToPath(new URL('./check-npm-update.mjs', import.meta.url))
+
+  const lockFor = (version) => JSON.stringify({
+    name: 'app',
+    version: '1.0.0',
+    lockfileVersion: 3,
+    requires: true,
+    packages: {
+      '': { name: 'app', version: '1.0.0', dependencies: { dep: '^1.0.0' } },
+      'node_modules/dep': { version, resolved: `https://registry.example.com/dep-${version}.tgz` },
+    },
+  })
+
+  const repoWithNestedTree = () => {
+    const repo = mkdtempSync(join(tmpdir(), 'nested-tree-'))
+    const git = (...args) => execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' })
+    mkdirSync(join(repo, 'backend'))
+    writeFileSync(
+      join(repo, 'backend', 'package.json'),
+      JSON.stringify({ name: 'app', version: '1.0.0', dependencies: { dep: '^1.0.0' } }),
+    )
+    writeFileSync(join(repo, 'backend', 'package-lock.json'), lockFor('1.0.0'))
+    git('init', '-q')
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'add', '-A')
+    // Isolated from whatever the host has configured globally: a
+    // core.hooksPath pointing at a real hook would run before either CLI
+    // assertion below ever runs (a pre-commit hook that exits 1 fails the
+    // fixture, not the checker), and commit.gpgSign=true would try to sign
+    // this throwaway commit and fail or hang on a passphrase prompt.
+    // /dev/null is not a directory, so git finds no hooks under it — the
+    // same convention gradle-update.yml uses to neutralize hooks on a
+    // runner nothing should have configured them on anyway.
+    git(
+      '-c', 'user.name=t', '-c', 'user.email=t@example.com',
+      '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null',
+      'commit', '-q', '-m', 'base',
+    )
+    // The batch: dep moves within its range, exactly what a weekly run does.
+    writeFileSync(join(repo, 'backend', 'package-lock.json'), lockFor('1.0.1'))
+    return repo
+  }
+
+  const runFrom = (cwd, ...args) =>
+    execFileSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8' })
+
+  it('validates a batch from the subdirectory', () => {
+    const cwd = join(repoWithNestedTree(), 'backend')
+    // A repo-rooted pathspec would abort here: HEAD:package.json names
+    // nothing in this repository — the manifests live under backend/.
+    expect(runFrom(cwd)).toContain('validated')
+  })
+
+  it('summarizes the same batch, naming the moved package', () => {
+    const cwd = join(repoWithNestedTree(), 'backend')
+    const summary = runFrom(cwd, 'summary')
+    expect(summary).toContain('## Updated packages')
+    expect(summary).toContain('`dep` 1.0.0 → 1.0.1')
   })
 })

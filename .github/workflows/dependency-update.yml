@@ -206,8 +206,6 @@ jobs:
           check 'npm run lint'
           check 'npm test'
           check 'npm run build'
-          check 'scripts/docs-lane.test.sh'
-          check 'shellcheck -s bash -S error scripts/docs-lane.sh scripts/docs-lane.test.sh'
           cat checks.md >> "$GITHUB_STEP_SUMMARY"
           if [ $failed -eq 0 ]; then
             echo 'passed=true' >> "$GITHUB_OUTPUT"

@@ -5,10 +5,6 @@ name: npm update
 # the manual trigger, and grants the permissions the reusable workflow's jobs
 # need (its own top-level permissions are empty by design; each job declares
 # only what it needs, capped by what's granted here).
-#
-# Pinned to the extraction branch while that PR is under review
-# (mikelward/npm-update#13) rather than @main, so this repo's own pilot PR
-# exercises the real behavior. Switch to @main once #13 merges.
 
 on:
   schedule:
@@ -23,7 +19,7 @@ permissions: {}
 
 jobs:
   npm-update:
-    uses: mikelward/npm-update/.github/workflows/npm-update.yml@claude/extract-npm-update-workflow
+    uses: mikelward/npm-update/.github/workflows/npm-update.yml@main
     permissions:
       contents: write
       pull-requests: write

@@ -83,3 +83,14 @@ than only the run summary, and outside the CI branch, so a failed CI dispatch
 cannot hide it. `npm-update.test.js` pins the call, the trigger, the
 ordering against body composition, and that separation. Raised by Codex on the
 pull request that installed these files.
+
+## CI
+
+- Add an AGPL license gate: fail CI if a dependency declares an AGPL
+  license, so introducing one by hand in a normal PR is caught, not just
+  ones the weekly bot bumps. Likely `license-checker-rseidelsohn` checking
+  the AGPL SPDX family, as a step in `ci.yml`'s existing `ci` job. GPL/LGPL
+  undecided, matching typelauncher#632. Needs to satisfy
+  `npm-update.test.js`'s ci.yml/npm-update.yml parity check too — work out
+  the details (regex classification, pinning, exact command match) when
+  actually building this, not here.

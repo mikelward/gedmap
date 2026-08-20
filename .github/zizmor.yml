@@ -21,6 +21,10 @@ rules:
         "mikelward/codex-review": ref-pin
         "mikelward/codex-review/.github/workflows/check-consumer.yml": ref-pin
         "mikelward/lanes": ref-pin
+        # Same reasoning: mikelward/npm-update is the shared home of the
+        # weekly dependency batch, and its own AGENTS.md states consumers
+        # track @main deliberately — there is no release step to pin to.
+        "mikelward/npm-update/.github/workflows/npm-update.yml": ref-pin
         # Official actions may pin to a tag, as every workflow here does.
         # Hash-pinning them instead is a deliberate open question, tracked
         # the same way mikelward/codex-review tracks it for itself.

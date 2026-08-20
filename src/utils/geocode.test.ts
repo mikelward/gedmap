@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// Set the HERE API key before geocode.js is imported so hereSearch doesn't short-circuit.
+// Set the HERE API key before geocode.ts is imported so hereSearch doesn't short-circuit.
 vi.hoisted(() => {
   import.meta.env.VITE_HERE_API_KEY = 'test-key'
 })
@@ -12,11 +12,19 @@ import {
   hereFeatureType,
   SPECIFICITY,
   geocodeAncestors,
-} from './geocode.js'
+  type FeatureType,
+  type GeoFeature,
+} from './geocode'
 
 // --- Helper to build feature fixtures (common format for HERE + Mapbox) ---
 
-function feature(name, type, coords, countryName, countryCodeVal) {
+function feature(
+  name: string,
+  type: FeatureType,
+  coords: [number, number],
+  countryName?: string,
+  countryCodeVal?: string
+): GeoFeature {
   return {
     geometry: { type: 'Point', coordinates: coords },
     properties: {
@@ -30,7 +38,7 @@ function feature(name, type, coords, countryName, countryCodeVal) {
 // --- Fake API responses keyed by query string ---
 // These simulate what a good geocoder (HERE) returns for various queries.
 
-const FIXTURES = {
+const FIXTURES: Record<string, GeoFeature[]> = {
   // Malmesbury, Westport St Mary, Wiltshire, England
   'Malmesbury, Westport St Mary, Wiltshire, England': [
     feature('Malmesbury', 'place', [-2.0988, 51.5841], 'United Kingdom', 'GBR'),
@@ -112,7 +120,7 @@ const FIXTURES = {
 }
 
 // Mock search function: query → features[]
-function mockSearch(query) {
+function mockSearch(query: string): Promise<GeoFeature[]> {
   return Promise.resolve(FIXTURES[query] || [])
 }
 
@@ -187,20 +195,20 @@ describe('pickBestFeature', () => {
   it('returns the first feature (trusts API relevance order)', () => {
     const place = feature('A', 'place', [0, 0], 'Z')
     const locality = feature('B', 'locality', [0, 0], 'Z')
-    const result = pickBestFeature([place, locality])
+    const result = pickBestFeature([place, locality])!
     expect(result.feature).toBe(place)
     expect(result.specificity).toBe(4)
   })
 
   it('reads specificity from the first feature', () => {
     const locality = feature('A', 'locality', [0, 0], 'Z')
-    const result = pickBestFeature([locality])
+    const result = pickBestFeature([locality])!
     expect(result.specificity).toBe(3)
   })
 
   it('handles unknown feature types with default specificity', () => {
-    const unknown = feature('A', 'something_new', [0, 0], 'Z')
-    const result = pickBestFeature([unknown])
+    const unknown = feature('A', 'something_new' as FeatureType, [0, 0], 'Z')
+    const result = pickBestFeature([unknown])!
     expect(result.specificity).toBe(4)
   })
 })
@@ -226,7 +234,7 @@ describe('SPECIFICITY', () => {
 describe('tryGeocode', () => {
   it('geocodes "Malmesbury, Westport St Mary, Wiltshire, England" to Malmesbury, UK', async () => {
     const parts = ['Malmesbury', 'Westport St Mary', 'Wiltshire', 'England']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(51.58, 0)
     expect(result.lng).toBeCloseTo(-2.10, 0)
@@ -235,7 +243,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Zagreb, Croatia" to Zagreb', async () => {
     const parts = ['Zagreb', 'Croatia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(45.82, 0)
     expect(result.lng).toBeCloseTo(15.98, 0)
@@ -244,7 +252,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Sydney, New South Wales, Australia" to Sydney', async () => {
     const parts = ['Sydney', 'New South Wales', 'Australia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(-33.87, 0)
     expect(result.lng).toBeCloseTo(151.21, 0)
@@ -253,7 +261,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Lessen, Elchniederung, Prussia" — falls back to region', async () => {
     const parts = ['Lessen', 'Elchniederung', 'Prussia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(52.5, 0)
     expect(result.lng).toBeCloseTo(13.4, 0)
@@ -261,7 +269,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Sisak, Yugoslavia" to Sisak, Croatia', async () => {
     const parts = ['Sisak', 'Yugoslavia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(45.47, 0)
     expect(result.lng).toBeCloseTo(16.37, 0)
@@ -270,7 +278,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Sarajevo, Yugoslavia" to Sarajevo, Bosnia', async () => {
     const parts = ['Sarajevo', 'Yugoslavia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(43.86, 0)
     expect(result.lng).toBeCloseTo(18.41, 0)
@@ -279,7 +287,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Brno, Moravia" to Brno, Czechia', async () => {
     const parts = ['Brno', 'Moravia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(49.20, 0)
     expect(result.lng).toBeCloseTo(16.61, 0)
@@ -288,7 +296,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Krakow, Austria-Hungary" to Kraków, Poland', async () => {
     const parts = ['Krakow', 'Austria-Hungary']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(50.06, 0)
     expect(result.lng).toBeCloseTo(19.94, 0)
@@ -297,7 +305,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Ganth, Fejer, Austria-Hungary" to Gánt, Hungary', async () => {
     const parts = ['Ganth', 'Fejer', 'Austria-Hungary']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(47.39, 0)
     expect(result.lng).toBeCloseTo(18.39, 0)
@@ -305,7 +313,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Gant, Fejer, Hungary" to Gánt, Hungary', async () => {
     const parts = ['Gant', 'Fejer', 'Hungary']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(47.39, 0)
     expect(result.lng).toBeCloseTo(18.39, 0)
@@ -313,7 +321,7 @@ describe('tryGeocode', () => {
 
   it('geocodes "Naracoorte, South Australia, Australia" to Australia', async () => {
     const parts = ['Naracoorte', 'South Australia', 'Australia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     expect(result).not.toBeNull()
     expect(result.country).toBe('Australia')
     expect(result.lat).toBeCloseTo(-36.95, 0)
@@ -328,7 +336,7 @@ describe('tryGeocode', () => {
 
   it('picks the most specific result across progressive queries', async () => {
     const parts = ['Sydney', 'New South Wales', 'Australia']
-    const result = await tryGeocode(parts, mockSearch)
+    const result = (await tryGeocode(parts, mockSearch))!
     // Sydney (place, specificity 4) is better than New South Wales (region, 7)
     // so it should return Sydney
     expect(result.lat).toBeCloseTo(-33.87, 0)
@@ -338,8 +346,8 @@ describe('tryGeocode', () => {
     // HERE maps city results to 'place' (specificity 4); a broader query
     // can never beat an already-found city match, so no further API
     // calls should be made.
-    const calls = []
-    const trackingSearch = (query) => {
+    const calls: string[] = []
+    const trackingSearch = (query: string): Promise<GeoFeature[]> => {
       calls.push(query)
       if (calls.length === 1) {
         return Promise.resolve([
@@ -348,15 +356,15 @@ describe('tryGeocode', () => {
       }
       return Promise.resolve([])
     }
-    const result = await tryGeocode(['Zagreb', 'Croatia'], trackingSearch)
+    const result = (await tryGeocode(['Zagreb', 'Croatia'], trackingSearch))!
     expect(result).not.toBeNull()
     expect(result.country).toBe('Croatia')
     expect(calls).toEqual(['Zagreb, Croatia'])
   })
 
   it('stops early when specificity <= 3', async () => {
-    const calls = []
-    const trackingSearch = (query) => {
+    const calls: string[] = []
+    const trackingSearch = (query: string): Promise<GeoFeature[]> => {
       calls.push(query)
       // Return a locality (specificity 3) for the first query
       if (calls.length === 1) {
@@ -374,14 +382,14 @@ describe('tryGeocode', () => {
   })
 
   it('returns country from last part when feature has no country context', async () => {
-    const searchFn = () =>
+    const searchFn = (): Promise<GeoFeature[]> =>
       Promise.resolve([
         {
           geometry: { type: 'Point', coordinates: [10, 50] },
-          properties: { name: 'Test', feature_type: 'place' },
+          properties: { name: 'Test', feature_type: 'place', context: { country: {} } },
         },
       ])
-    const result = await tryGeocode(['Town', 'MyCountry'], searchFn)
+    const result = (await tryGeocode(['Town', 'MyCountry'], searchFn))!
     expect(result.country).toBe('MyCountry')
   })
 
@@ -391,7 +399,7 @@ describe('tryGeocode', () => {
   })
 
   it('handles single-part array', async () => {
-    const result = await tryGeocode(['Portland'], mockSearch)
+    const result = (await tryGeocode(['Portland'], mockSearch))!
     expect(result).not.toBeNull()
     expect(result.lat).toBeCloseTo(45.52, 0)
   })
@@ -401,23 +409,29 @@ describe('tryGeocode', () => {
 
 describe('geocodeAncestors', () => {
   // Mock the HERE API by intercepting fetch
-  function setupFetchMock(responseMap) {
+  function setupFetchMock(responseMap: Record<string, ReturnType<typeof hereItem>[]>) {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = vi.fn(async (url) => {
-      const u = new URL(url)
-      const query = u.searchParams.get('q')
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const u = new URL(url.toString())
+      const query = u.searchParams.get('q') ?? ''
       const items = responseMap[query] || []
       return {
         ok: true,
         json: async () => ({ items }),
-      }
+      } as Response
     })
     return () => {
       globalThis.fetch = originalFetch
     }
   }
 
-  function hereItem(name, lat, lng, countryName, resultType = 'locality') {
+  function hereItem(
+    name: string,
+    lat: number,
+    lng: number,
+    countryName: string,
+    resultType = 'locality'
+  ) {
     return {
       title: name,
       position: { lat, lng },
@@ -517,20 +531,20 @@ describe('geocodeAncestors', () => {
     let maxInFlight = 0
 
     const originalFetch = globalThis.fetch
-    globalThis.fetch = vi.fn(async (url) => {
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
       inFlight++
       maxInFlight = Math.max(maxInFlight, inFlight)
       // Simulate async delay
       await new Promise((r) => setTimeout(r, 10))
       inFlight--
-      const u = new URL(url)
-      const query = u.searchParams.get('q')
+      const u = new URL(url.toString())
+      const query = u.searchParams.get('q') ?? ''
       return {
         ok: true,
         json: async () => ({
           items: [hereItem(query, 1, 1, 'X')],
         }),
-      }
+      } as Response
     })
 
     try {

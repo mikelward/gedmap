@@ -3,7 +3,7 @@ import {
   parseGedcomFile,
   collectAncestorsForRoot,
   collectAll,
-} from './parseGedcom.js'
+} from './parseGedcom'
 
 // --- Minimal GEDCOM fixtures ---
 
@@ -117,40 +117,40 @@ describe('parseGedcomFile', () => {
 
   it('extracts individual names with slashes removed', () => {
     const { individuals } = parseGedcomFile(MINIMAL_GEDCOM)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
-    expect(individuals.get('@I2@').name).toBe('Jane Doe')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
+    expect(individuals.get('@I2@')!.name).toBe('Jane Doe')
   })
 
   it('extracts birth date and place', () => {
     const { individuals } = parseGedcomFile(MINIMAL_GEDCOM)
-    const john = individuals.get('@I1@')
+    const john = individuals.get('@I1@')!
     expect(john.birthDate).toBe('10 Jul 1882')
     expect(john.birthPlace).toBe('London, England')
   })
 
   it('extracts death date and place', () => {
     const { individuals } = parseGedcomFile(MINIMAL_GEDCOM)
-    const john = individuals.get('@I1@')
+    const john = individuals.get('@I1@')!
     expect(john.deathDate).toBe('5 Mar 1950')
     expect(john.deathPlace).toBe('Manchester, England')
   })
 
   it('extracts sex', () => {
     const { individuals } = parseGedcomFile(MINIMAL_GEDCOM)
-    expect(individuals.get('@I1@').sex).toBe('M')
-    expect(individuals.get('@I2@').sex).toBe('F')
+    expect(individuals.get('@I1@')!.sex).toBe('M')
+    expect(individuals.get('@I2@')!.sex).toBe('F')
   })
 
   it('builds family links between parents and children', () => {
     const { individuals } = parseGedcomFile(MINIMAL_GEDCOM)
-    const child = individuals.get('@I3@')
+    const child = individuals.get('@I3@')!
     expect(child.parentIds).toContain('@I1@')
     expect(child.parentIds).toContain('@I2@')
 
-    const father = individuals.get('@I1@')
+    const father = individuals.get('@I1@')!
     expect(father.childIds).toContain('@I3@')
 
-    const mother = individuals.get('@I2@')
+    const mother = individuals.get('@I2@')!
     expect(mother.childIds).toContain('@I3@')
   })
 
@@ -198,7 +198,7 @@ describe('tokenizer and tree builder', () => {
 `
     const { individuals } = parseGedcomFile(gedcom)
     // CONC should not break individual extraction
-    expect(individuals.get('@I1@').name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
   })
 
   it('handles CONT lines (continuation with newline)', () => {
@@ -211,7 +211,7 @@ describe('tokenizer and tree builder', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
   })
 
   it('handles lines with pointer values', () => {
@@ -230,9 +230,9 @@ describe('tokenizer and tree builder', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const child = individuals.get('@I1@')
+    const child = individuals.get('@I1@')!
     expect(child.famcRefs).toContain('@F1@')
-    const mother = individuals.get('@I2@')
+    const mother = individuals.get('@I2@')!
     expect(mother.famsRefs).toContain('@F1@')
   })
 
@@ -240,17 +240,17 @@ describe('tokenizer and tree builder', () => {
     const gedcom =
       '0 @I1@ INDI\r\n1 NAME John /Smith/\r\n1 SEX M\r\n1 BIRT\r\n2 DATE 1 JAN 1900\r\n2 PLAC London\r\n0 TRLR\r\n'
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
-    expect(individuals.get('@I1@').birthPlace).toBe('London')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.birthPlace).toBe('London')
   })
 
   it('tolerates leading whitespace before the level number', () => {
     const gedcom =
       '0 @I1@ INDI\n  1 NAME John /Smith/\n\t1 SEX M\n 1 BIRT\n  2 PLAC London\n0 TRLR\n'
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
-    expect(individuals.get('@I1@').sex).toBe('M')
-    expect(individuals.get('@I1@').birthPlace).toBe('London')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.sex).toBe('M')
+    expect(individuals.get('@I1@')!.birthPlace).toBe('London')
   })
 
   it('skips malformed lines', () => {
@@ -262,8 +262,8 @@ this is not a valid GEDCOM line
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
-    expect(individuals.get('@I1@').sex).toBe('M')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.sex).toBe('M')
   })
 
   it('does not crash on level-skipping lines', () => {
@@ -280,7 +280,7 @@ this is not a valid GEDCOM line
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('John Smith')
+    expect(individuals.get('@I1@')!.name).toBe('John Smith')
   })
 
   it('handles individuals with missing optional fields', () => {
@@ -290,7 +290,7 @@ this is not a valid GEDCOM line
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const person = individuals.get('@I1@')
+    const person = individuals.get('@I1@')!
     expect(person.name).toBe('Unknown Person')
     expect(person.birthDate).toBeNull()
     expect(person.birthPlace).toBeNull()
@@ -309,7 +309,7 @@ this is not a valid GEDCOM line
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').name).toBe('Unknown')
+    expect(individuals.get('@I1@')!.name).toBe('Unknown')
   })
 
   it('extracts photo from OBJE/FILE', () => {
@@ -322,7 +322,7 @@ this is not a valid GEDCOM line
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').photo).toBe('photo.jpg')
+    expect(individuals.get('@I1@')!.photo).toBe('photo.jpg')
   })
 })
 
@@ -338,7 +338,7 @@ describe('normalizeDate', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').birthDate).toBe('10 Jul 1882')
+    expect(individuals.get('@I1@')!.birthDate).toBe('10 Jul 1882')
   })
 
   it('normalizes approximate dates', () => {
@@ -350,7 +350,7 @@ describe('normalizeDate', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').birthDate).toBe('Abt 1900')
+    expect(individuals.get('@I1@')!.birthDate).toBe('Abt 1900')
   })
 
   it('handles year-only dates', () => {
@@ -362,7 +362,7 @@ describe('normalizeDate', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').birthDate).toBe('1900')
+    expect(individuals.get('@I1@')!.birthDate).toBe('1900')
   })
 
   it('returns null for missing dates', () => {
@@ -374,7 +374,7 @@ describe('normalizeDate', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    expect(individuals.get('@I1@').birthDate).toBeNull()
+    expect(individuals.get('@I1@')!.birthDate).toBeNull()
   })
 })
 
@@ -407,12 +407,12 @@ describe('buildFamilyLinks', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const father = individuals.get('@I1@')
+    const father = individuals.get('@I1@')!
     expect(father.childIds).toContain('@I3@')
     expect(father.childIds).toContain('@I4@')
     expect(father.childIds).toHaveLength(2)
 
-    const child1 = individuals.get('@I3@')
+    const child1 = individuals.get('@I3@')!
     expect(child1.parentIds).toContain('@I1@')
     expect(child1.parentIds).toContain('@I2@')
   })
@@ -433,7 +433,7 @@ describe('buildFamilyLinks', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const child = individuals.get('@I2@')
+    const child = individuals.get('@I2@')!
     expect(child.parentIds).toEqual(['@I1@'])
   })
 
@@ -450,7 +450,7 @@ describe('buildFamilyLinks', () => {
 `
     // Should not throw
     const { individuals } = parseGedcomFile(gedcom)
-    const person = individuals.get('@I1@')
+    const person = individuals.get('@I1@')!
     // @I999@ doesn't exist, so it shouldn't appear in parentIds
     expect(person.parentIds).toEqual([])
   })
@@ -473,7 +473,7 @@ describe('buildFamilyLinks', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const parent = individuals.get('@I1@')
+    const parent = individuals.get('@I1@')!
     expect(parent.childIds).toEqual(['@I2@'])
   })
 
@@ -501,7 +501,7 @@ describe('buildFamilyLinks', () => {
 0 TRLR
 `
     const { individuals } = parseGedcomFile(gedcom)
-    const child = individuals.get('@I3@')
+    const child = individuals.get('@I3@')!
     expect(child.parentIds).toEqual(['@I1@', '@I2@'])
   })
 })
@@ -512,8 +512,8 @@ describe('relationship labels', () => {
   it('labels generation 1 as Father/Mother', () => {
     const { individuals } = parseGedcomFile(THREE_GEN_GEDCOM)
     const { withPlace } = collectAncestorsForRoot(individuals, '@I1@', 4)
-    const father = withPlace.find((a) => a.id === '@I2@')
-    const mother = withPlace.find((a) => a.id === '@I3@')
+    const father = withPlace.find((a) => a.id === '@I2@')!
+    const mother = withPlace.find((a) => a.id === '@I3@')!
     expect(father.relationship).toBe('Father')
     expect(mother.relationship).toBe('Mother')
   })
@@ -526,17 +526,17 @@ describe('relationship labels', () => {
       4
     )
     const all = [...withPlace, ...noPlace]
-    const patGrandfather = all.find((a) => a.id === '@I4@')
+    const patGrandfather = all.find((a) => a.id === '@I4@')!
     expect(patGrandfather.relationship).toBe('Paternal Grandfather')
 
-    const matGrandfather = all.find((a) => a.id === '@I6@')
+    const matGrandfather = all.find((a) => a.id === '@I6@')!
     expect(matGrandfather.relationship).toBe('Maternal Grandfather')
   })
 
   it('labels generation 0 (root) with no relationship', () => {
     const { individuals } = parseGedcomFile(THREE_GEN_GEDCOM)
     const { withPlace } = collectAncestorsForRoot(individuals, '@I1@', 4)
-    const root = withPlace.find((a) => a.id === '@I1@')
+    const root = withPlace.find((a) => a.id === '@I1@')!
     expect(root.relationship).toBeNull()
   })
 
@@ -582,7 +582,7 @@ describe('relationship labels', () => {
 `
     const { individuals } = parseGedcomFile(gedcom)
     const { withPlace } = collectAncestorsForRoot(individuals, '@I1@', 4)
-    const greatGrandfather = withPlace.find((a) => a.id === '@I4@')
+    const greatGrandfather = withPlace.find((a) => a.id === '@I4@')!
     expect(greatGrandfather.relationship).toBe('Paternal Great-grandfather')
     expect(greatGrandfather.generation).toBe(3)
   })
@@ -619,12 +619,12 @@ describe('collectAncestorsForRoot', () => {
   it('includes parent and children links in output', () => {
     const { individuals } = parseGedcomFile(THREE_GEN_GEDCOM)
     const { withPlace } = collectAncestorsForRoot(individuals, '@I1@', 2)
-    const root = withPlace.find((a) => a.id === '@I1@')
+    const root = withPlace.find((a) => a.id === '@I1@')!
     expect(root.parents).toHaveLength(2)
     expect(root.parents.map((p) => p.id).sort()).toEqual(['@I2@', '@I3@'].sort())
     expect(root.children).toHaveLength(0) // root has no children in ancestors
 
-    const father = withPlace.find((a) => a.id === '@I2@')
+    const father = withPlace.find((a) => a.id === '@I2@')!
     expect(father.children).toEqual([{ id: '@I1@', name: 'Child Test' }])
   })
 
@@ -658,10 +658,10 @@ describe('collectAncestorsForRoot', () => {
       2
     )
     const all = [...withPlace, ...noPlace]
-    expect(all.find((a) => a.id === '@I1@').generation).toBe(0)
-    expect(all.find((a) => a.id === '@I2@').generation).toBe(1)
-    expect(all.find((a) => a.id === '@I3@').generation).toBe(1)
-    expect(all.find((a) => a.id === '@I4@').generation).toBe(2)
+    expect(all.find((a) => a.id === '@I1@')!.generation).toBe(0)
+    expect(all.find((a) => a.id === '@I2@')!.generation).toBe(1)
+    expect(all.find((a) => a.id === '@I3@')!.generation).toBe(1)
+    expect(all.find((a) => a.id === '@I4@')!.generation).toBe(2)
   })
 })
 
@@ -694,7 +694,7 @@ describe('collectAll', () => {
   it('includes parent and children links', () => {
     const { individuals } = parseGedcomFile(THREE_GEN_GEDCOM)
     const { withPlace } = collectAll(individuals)
-    const father = withPlace.find((a) => a.id === '@I2@')
+    const father = withPlace.find((a) => a.id === '@I2@')!
     expect(father.parents).toHaveLength(2)
     expect(father.children).toHaveLength(1)
   })

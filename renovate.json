@@ -67,7 +67,8 @@
         "eslint",
         "eslint-**",
         "@eslint/**",
-        "@eslint-community/**"
+        "@eslint-community/**",
+        "typescript-eslint"
       ]
     },
     {

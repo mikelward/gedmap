@@ -8,7 +8,7 @@ if (typeof window !== 'undefined') {
   // Mock window.matchMedia for jsdom (used by ThemeContext)
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: (query) => ({
+    value: (query: string) => ({
       matches: query === '(prefers-color-scheme: dark)',
       media: query,
       onchange: null,
@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
       removeListener: () => {},
       addEventListener: () => {},
       removeEventListener: () => {},
-      dispatchEvent: () => {},
+      dispatchEvent: () => false,
     }),
   })
 }

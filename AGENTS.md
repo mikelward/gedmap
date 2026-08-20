@@ -4,7 +4,7 @@ Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbo
 
 ## Tech Stack
 
-- React 19, Vite 8, Tailwind CSS 4, Vitest
+- TypeScript (strict), React 19, Vite 8, Tailwind CSS 4, Vitest
 - Mapbox GL JS for map rendering
 - HERE Geocoding API for place lookups
 
@@ -13,8 +13,9 @@ Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbo
 ```sh
 npm install
 npm run dev        # Start dev server
-npm run build      # Production build
+npm run build      # Typecheck (tsc -b) + production build
 npm run lint       # ESLint
+npm run typecheck  # tsc -b --noEmit
 ```
 
 ## Testing
@@ -26,23 +27,24 @@ npm run test:coverage # Run tests with V8 coverage report
 ```
 
 Tests use [Vitest](https://vitest.dev/) with jsdom for component tests. Test files
-live next to their source files using the `*.test.{js,jsx}` convention.
+live next to their source files using the `*.test.{ts,tsx}` convention.
 
 ### Test structure
 
-- `src/utils/parseGedcom.test.js` — GEDCOM parser: tokenization, tree building, family links, relationship labels, ancestor collection
-- `src/utils/geocode.test.js` — Geocoding: place splitting, feature ranking, progressive query shortening, concurrent ancestor geocoding
-- `src/components/StatsOverlay.test.jsx` — Stats display: counts, unmapped sections
-- `src/components/PersonPicker.test.jsx` — Person picker: rendering, search filtering, selection
-- `src/components/AncestorSidebar.test.jsx` — Sidebar: generation grouping, search, open/close
-- `src/components/MiniMap.test.jsx` — Mercator projection math
-- `src/ThemeContext.test.jsx` — Theme toggling and persistence
+- `src/utils/parseGedcom.test.ts` — GEDCOM parser: tokenization, tree building, family links, relationship labels, ancestor collection
+- `src/utils/geocode.test.ts` — Geocoding: place splitting, feature ranking, progressive query shortening, concurrent ancestor geocoding
+- `src/components/StatsOverlay.test.tsx` — Stats display: counts, unmapped sections
+- `src/components/PersonPicker.test.tsx` — Person picker: rendering, search filtering, selection
+- `src/components/AncestorSidebar.test.tsx` — Sidebar: generation grouping, search, open/close
+- `src/components/MiniMap.test.ts` — Mercator projection math
+- `src/ThemeContext.test.tsx` — Theme toggling and persistence
 
 ### Writing tests
 
 - Utility tests: import functions directly, use mock search functions for geocoding
 - Component tests: use `@testing-library/react`, wrap with `<ThemeProvider>` if the component uses `useTheme()`
 - The geocode tests set `import.meta.env.VITE_HERE_API_KEY` via `vi.hoisted()` and mock `fetch` to avoid real API calls
+- `src/testFixtures.ts` has builders for the strict `AncestorEntry`/`GeocodedAncestor`/`PersonSummary` shapes (`src/types.ts`) — reach for those in a new component test instead of hand-rolling a full-shaped fixture object
 
 ## Workflow
 

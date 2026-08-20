@@ -1,9 +1,40 @@
 // Custom GEDCOM parser — parse-gedcom crashes on files with pointer-like
 // values in CONC/CONT lines, so we roll our own lightweight parser.
 
-function tokenize(text) {
+import type {
+  AncestorEntry,
+  CollectedAncestors,
+  Individual,
+  ParsedGedcom,
+  PersonSummary,
+  RelativeRef,
+} from '../types'
+
+interface GedcomToken {
+  level: number
+  xref: string | null
+  tag: string
+  value: string
+  pointer: string | null
+}
+
+interface GedcomNode {
+  tag: string
+  xref: string | null
+  value: string
+  pointer: string | null
+  children: GedcomNode[]
+}
+
+/** A person mid-collection: an `Individual` plus its generation/relationship. */
+interface AncestorPerson extends Individual {
+  generation: number
+  relationship: string | null
+}
+
+function tokenize(text: string): GedcomToken[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim())
-  const records = []
+  const records: GedcomToken[] = []
 
   for (const line of lines) {
     // Strip leading whitespace only — some producers indent lines, but
@@ -26,12 +57,12 @@ function tokenize(text) {
   return records
 }
 
-function buildTree(tokens) {
-  const root = { tag: 'ROOT', children: [] }
-  const stack = [root]
+function buildTree(tokens: GedcomToken[]): GedcomNode {
+  const root: GedcomNode = { tag: 'ROOT', xref: null, value: '', pointer: null, children: [] }
+  const stack: (GedcomNode | undefined)[] = [root]
 
   for (const token of tokens) {
-    const node = {
+    const node: GedcomNode = {
       tag: token.tag,
       xref: token.xref,
       value: token.value,
@@ -70,27 +101,27 @@ function buildTree(tokens) {
 }
 
 // GEDCOM dates are uppercase ("10 JUL 1882"). Normalize to title case ("10 Jul 1882").
-function normalizeDate(date) {
+function normalizeDate(date: string | null): string | null {
   if (!date) return null
   return date.replace(/\b([A-Z]{3,})\b/g, (m) =>
     m.charAt(0) + m.slice(1).toLowerCase()
   )
 }
 
-function findChild(node, tag) {
+function findChild(node: GedcomNode, tag: string): GedcomNode | null {
   return node.children.find((c) => c.tag === tag) || null
 }
 
-function findChildValue(node, tag) {
+function findChildValue(node: GedcomNode, tag: string): string | null {
   return findChild(node, tag)?.value || null
 }
 
-function findAllChildren(node, tag) {
+function findAllChildren(node: GedcomNode, tag: string): GedcomNode[] {
   return node.children.filter((c) => c.tag === tag)
 }
 
-function extractIndividuals(tree) {
-  const individuals = new Map()
+function extractIndividuals(tree: GedcomNode): Map<string, Individual> {
+  const individuals = new Map<string, Individual>()
 
   for (const node of tree.children) {
     if (node.tag !== 'INDI') continue
@@ -134,7 +165,7 @@ function extractIndividuals(tree) {
   return individuals
 }
 
-function buildFamilyLinks(tree, individuals) {
+function buildFamilyLinks(tree: GedcomNode, individuals: Map<string, Individual>): void {
   for (const node of tree.children) {
     if (node.tag !== 'FAM') continue
 
@@ -158,7 +189,7 @@ function buildFamilyLinks(tree, individuals) {
     }
 
     // Link parents to children
-    for (const pid of [husbId, wifeId].filter(Boolean)) {
+    for (const pid of [husbId, wifeId].filter((id): id is string => Boolean(id))) {
       const parent = individuals.get(pid)
       if (!parent) continue
       for (const cid of childIds) {
@@ -170,12 +201,14 @@ function buildFamilyLinks(tree, individuals) {
   }
 }
 
-function findRootPerson(individuals) {
+function findRootPerson(individuals: Map<string, Individual>): string | undefined {
   // Ancestry and most genealogy apps export the home person as the first INDI
   return individuals.keys().next().value
 }
 
-function getRelationshipLabel(generation, sex, side) {
+type Side = 'Paternal' | 'Maternal' | null
+
+function getRelationshipLabel(generation: number, sex: string | null, side: Side): string | null {
   if (generation === 0) return null
 
   const isMale = sex === 'M'
@@ -194,18 +227,28 @@ function getRelationshipLabel(generation, sex, side) {
   return prefix + greatStr + base
 }
 
-function collectDirectAncestors(individuals, rootId, maxGenerations = 4) {
-  const result = new Map()
-  const queue = [{ id: rootId, generation: 0, side: null }]
+interface QueueEntry {
+  id: string | undefined
+  generation: number
+  side: Side
+}
+
+function collectDirectAncestors(
+  individuals: Map<string, Individual>,
+  rootId: string | undefined,
+  maxGenerations = 4
+): Map<string, AncestorPerson> {
+  const result = new Map<string, AncestorPerson>()
+  const queue: QueueEntry[] = [{ id: rootId, generation: 0, side: null }]
 
   while (queue.length > 0) {
-    const { id, generation, side } = queue.shift()
+    const { id, generation, side } = queue.shift()!
     if (!id || result.has(id) || !individuals.has(id)) continue
     if (generation > maxGenerations) continue
 
-    const person = individuals.get(id)
+    const person = individuals.get(id)!
     // For gen 1, determine side from the person's sex
-    const personSide =
+    const personSide: Side =
       generation === 0 ? null :
       generation === 1 ? (person.sex === 'M' ? 'Paternal' : person.sex === 'F' ? 'Maternal' : null) :
       side
@@ -226,7 +269,7 @@ function collectDirectAncestors(individuals, rootId, maxGenerations = 4) {
  * Parse a GEDCOM file and return all individuals with family links.
  * This is the first step — call collectAncestorsForRoot() next with a chosen root.
  */
-export function parseGedcomFile(gedcomText) {
+export function parseGedcomFile(gedcomText: string): ParsedGedcom {
   const tokens = tokenize(gedcomText)
   const tree = buildTree(tokens)
   const individuals = extractIndividuals(tree)
@@ -235,7 +278,7 @@ export function parseGedcomFile(gedcomText) {
   const defaultRootId = findRootPerson(individuals)
 
   // Build a lightweight list for the person picker
-  const allPeople = []
+  const allPeople: PersonSummary[] = []
   for (const [id, person] of individuals) {
     allPeople.push({
       id,
@@ -248,25 +291,27 @@ export function parseGedcomFile(gedcomText) {
   return { individuals, defaultRootId, allPeople }
 }
 
+function relativeRefs(ids: string[], pool: Map<string, Individual>): RelativeRef[] {
+  return ids
+    .filter((id) => pool.has(id))
+    .map((id) => ({ id, name: pool.get(id)!.name }))
+}
+
 /**
  * Collect direct ancestors for a given root person and split into withPlace/noPlace.
  */
-export function collectAncestorsForRoot(individuals, rootId, maxGenerations = 4) {
+export function collectAncestorsForRoot(
+  individuals: Map<string, Individual>,
+  rootId: string | undefined,
+  maxGenerations = 4
+): CollectedAncestors {
   const ancestors = collectDirectAncestors(individuals, rootId, maxGenerations)
 
-  const withPlace = []
-  const noPlace = []
+  const withPlace: AncestorEntry[] = []
+  const noPlace: AncestorEntry[] = []
 
   for (const [id, person] of ancestors) {
-    const parents = person.parentIds
-      .filter((pid) => ancestors.has(pid))
-      .map((pid) => ({ id: pid, name: ancestors.get(pid).name }))
-
-    const children = person.childIds
-      .filter((cid) => ancestors.has(cid))
-      .map((cid) => ({ id: cid, name: ancestors.get(cid).name }))
-
-    const entry = {
+    const entry: AncestorEntry = {
       id,
       name: person.name,
       birthDate: person.birthDate,
@@ -276,8 +321,8 @@ export function collectAncestorsForRoot(individuals, rootId, maxGenerations = 4)
       photo: person.photo,
       generation: person.generation,
       relationship: person.relationship,
-      parents,
-      children,
+      parents: relativeRefs(person.parentIds, ancestors),
+      children: relativeRefs(person.childIds, ancestors),
     }
 
     if (person.birthPlace) {
@@ -293,20 +338,12 @@ export function collectAncestorsForRoot(individuals, rootId, maxGenerations = 4)
 /**
  * Collect ALL people in the file, split into withPlace/noPlace.
  */
-export function collectAll(individuals) {
-  const withPlace = []
-  const noPlace = []
+export function collectAll(individuals: Map<string, Individual>): CollectedAncestors {
+  const withPlace: AncestorEntry[] = []
+  const noPlace: AncestorEntry[] = []
 
   for (const [id, person] of individuals) {
-    const parents = person.parentIds
-      .filter((pid) => individuals.has(pid))
-      .map((pid) => ({ id: pid, name: individuals.get(pid).name }))
-
-    const children = person.childIds
-      .filter((cid) => individuals.has(cid))
-      .map((cid) => ({ id: cid, name: individuals.get(cid).name }))
-
-    const entry = {
+    const entry: AncestorEntry = {
       id,
       name: person.name,
       birthDate: person.birthDate,
@@ -316,8 +353,8 @@ export function collectAll(individuals) {
       photo: person.photo,
       generation: null,
       relationship: null,
-      parents,
-      children,
+      parents: relativeRefs(person.parentIds, individuals),
+      children: relativeRefs(person.childIds, individuals),
     }
 
     if (person.birthPlace) {

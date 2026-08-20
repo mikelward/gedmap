@@ -1,9 +1,57 @@
 const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY
 
-const cache = new Map()
+const cache = new Map<string, Promise<GeocodeResult | null>>()
+
+export type FeatureType =
+  | 'address'
+  | 'street'
+  | 'neighborhood'
+  | 'locality'
+  | 'place'
+  | 'postcode'
+  | 'district'
+  | 'region'
+  | 'country'
+
+export interface GeoFeature {
+  geometry: {
+    type: 'Point'
+    coordinates: [number, number]
+  }
+  properties: {
+    name?: string
+    full_address?: string
+    feature_type: FeatureType
+    context: {
+      country: {
+        name?: string
+        country_code?: string
+      }
+    }
+  }
+}
+
+type SearchFn = (query: string) => Promise<GeoFeature[]>
+
+export interface GeocodeResult {
+  lat: number
+  lng: number
+  country: string
+}
+
+interface HereResultItem {
+  title: string
+  position: { lat: number; lng: number }
+  resultType?: string
+  address?: {
+    label?: string
+    countryName?: string
+    countryCode?: string
+  }
+}
 
 // Specificity by feature_type — lower = more specific.
-export const SPECIFICITY = {
+export const SPECIFICITY: Record<FeatureType, number> = {
   address: 0,
   street: 1,
   neighborhood: 2,
@@ -16,7 +64,7 @@ export const SPECIFICITY = {
 }
 
 // Map HERE resultType to a specificity feature_type.
-export function hereFeatureType(resultType) {
+export function hereFeatureType(resultType: string | undefined): FeatureType {
   switch (resultType) {
     case 'houseNumber':
       return 'address'
@@ -32,7 +80,7 @@ export function hereFeatureType(resultType) {
 }
 
 // Query HERE Geocoding API. Returns features in a common format.
-async function hereSearch(query) {
+async function hereSearch(query: string): Promise<GeoFeature[]> {
   if (!HERE_API_KEY) return []
   const params = new URLSearchParams({
     q: query,
@@ -43,11 +91,11 @@ async function hereSearch(query) {
   try {
     const res = await fetch(url)
     if (!res.ok) return []
-    const data = await res.json()
+    const data = (await res.json()) as { items?: HereResultItem[] }
     return (data.items || []).map((item) => ({
       geometry: {
-        type: 'Point',
-        coordinates: [item.position.lng, item.position.lat],
+        type: 'Point' as const,
+        coordinates: [item.position.lng, item.position.lat] as [number, number],
       },
       properties: {
         name: item.title,
@@ -66,17 +114,27 @@ async function hereSearch(query) {
   }
 }
 
+interface BestFeature {
+  feature: GeoFeature
+  specificity: number
+}
+
 // Pick the best feature from a list — trusts the API's relevance order
 // and just reads specificity from the first result.
-export function pickBestFeature(features) {
+export function pickBestFeature(features: GeoFeature[]): BestFeature | null {
   if (features.length === 0) return null
   const best = features[0]
   const specificity = SPECIFICITY[best.properties?.feature_type] ?? 4
   return { feature: best, specificity }
 }
 
+export interface SplitPlace {
+  parts: string[]
+  spaceParts: string[] | null
+}
+
 // Split a GEDCOM place string into parts for progressive querying.
-export function splitPlace(place) {
+export function splitPlace(place: string): SplitPlace {
   // Drop empty segments — exports often leave blank jurisdiction slots
   // ("Brooklyn, , New York, USA,") that would produce garbage queries.
   const parts = place.split(',').map((s) => s.trim()).filter(Boolean)
@@ -90,8 +148,8 @@ export function splitPlace(place) {
 
 // Core geocoding logic: progressive query shortening.
 // searchFn(query) → features[]
-export async function tryGeocode(parts, searchFn) {
-  let bestFeature = null
+export async function tryGeocode(parts: string[], searchFn: SearchFn): Promise<GeocodeResult | null> {
+  let bestFeature: GeoFeature | null = null
   let bestSpecificity = Infinity
 
   for (let i = 0; i < parts.length; i++) {
@@ -136,8 +194,9 @@ export async function tryGeocode(parts, searchFn) {
 // Cache the in-flight promise, not just the settled result — ancestors
 // sharing a birth place run concurrently, and each would otherwise miss
 // the cache and issue its own duplicate API requests.
-function geocodePlace(place) {
-  if (cache.has(place)) return cache.get(place)
+function geocodePlace(place: string): Promise<GeocodeResult | null> {
+  const cached = cache.get(place)
+  if (cached) return cached
 
   const promise = (async () => {
     const { parts, spaceParts } = splitPlace(place)
@@ -156,14 +215,27 @@ function geocodePlace(place) {
   return promise
 }
 
-export async function geocodeAncestors(ancestors, onProgress, { concurrency = 5 } = {}) {
-  const geocoded = []
-  const geocodeFailed = []
+export interface GeocodeAncestorsOptions {
+  concurrency?: number
+}
+
+export interface GeocodeAncestorsResult<T> {
+  geocoded: (T & GeocodeResult)[]
+  geocodeFailed: T[]
+}
+
+export async function geocodeAncestors<T extends { birthPlace: string | null }>(
+  ancestors: T[],
+  onProgress: (completed: number) => void,
+  { concurrency = 5 }: GeocodeAncestorsOptions = {}
+): Promise<GeocodeAncestorsResult<T>> {
+  const geocoded: (T & GeocodeResult)[] = []
+  const geocodeFailed: T[] = []
   let completed = 0
 
-  async function processOne(ancestor) {
+  async function processOne(ancestor: T) {
     try {
-      const coords = await geocodePlace(ancestor.birthPlace)
+      const coords = ancestor.birthPlace ? await geocodePlace(ancestor.birthPlace) : null
       if (coords) {
         geocoded.push({
           ...ancestor,
@@ -182,9 +254,11 @@ export async function geocodeAncestors(ancestors, onProgress, { concurrency = 5 
   }
 
   // Process ancestors with bounded concurrency
-  const executing = new Set()
+  const executing = new Set<Promise<void>>()
   for (const ancestor of ancestors) {
-    const p = processOne(ancestor).then(() => executing.delete(p))
+    const p: Promise<void> = processOne(ancestor).then(() => {
+      executing.delete(p)
+    })
     executing.add(p)
     if (executing.size >= concurrency) {
       await Promise.race(executing)

@@ -2,12 +2,21 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
 
-export default [
+export default tseslint.config(
   { ignores: ['dist', 'coverage'] },
+  // Applies everywhere (no `files` restriction) so plain .js/.mjs tooling —
+  // the root-level checker tests, scripts/ — keeps the same no-undef /
+  // no-unused-vars coverage it had before the TS port; only the
+  // TypeScript-specific rules below are scoped to .ts/.tsx.
   js.configs.recommended,
+  // The app itself — src/ — is TypeScript now (see AGENTS.md). Everything
+  // still under plain .js/.mjs is repo tooling (root-level checker tests,
+  // scripts/) that was deliberately left out of the TS port.
   {
-    files: ['**/*.{js,jsx}'],
+    extends: [...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -27,30 +36,33 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
   {
-    files: ['**/*.test.{js,jsx}', 'src/test-setup.js'],
+    files: ['**/*.test.{ts,tsx}', 'src/test-setup.ts'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
     },
   },
   {
-    files: ['vite.config.js'],
+    files: ['vite.config.ts'],
     languageOptions: {
       globals: globals.node,
     },
   },
-  // Repo tooling that runs under Node, not in the browser. The `**/*.{js,jsx}`
-  // block above does not match `.mjs` at all, so without this these files get
-  // only the recommended rules with no globals declared and every `process` or
-  // `console` reference is a no-undef error.
+  // Repo tooling that runs under Node, not in the browser: root-level
+  // checker tests (nodeVersion.test.js and siblings) and scripts/. Plain
+  // .js/.mjs, deliberately outside the TS port — see AGENTS.md.
   {
-    files: ['**/*.mjs'],
+    files: ['**/*.{js,mjs}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: globals.node,
+      globals: { ...globals.browser, ...globals.node },
     },
   },
-]
+)

@@ -1,7 +1,15 @@
 import { useState, useMemo } from 'react'
 import { useTheme } from '../ThemeContext'
+import type { PersonSummary } from '../types'
 
-export default function PersonPicker({ allPeople, defaultRootId, onSelect, appError }) {
+interface PersonPickerProps {
+  allPeople: PersonSummary[]
+  defaultRootId: string | undefined
+  onSelect: (id: string) => void
+  appError: string | null
+}
+
+export default function PersonPicker({ allPeople, defaultRootId, onSelect, appError }: PersonPickerProps) {
   const [search, setSearch] = useState('')
   const { theme, toggleTheme } = useTheme()
 

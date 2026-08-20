@@ -2,15 +2,20 @@ import { useState, useCallback, useRef } from 'react'
 import { useTheme } from '../ThemeContext'
 import ExportGuide from './ExportGuide'
 
-export default function UploadScreen({ onFileUpload, appError }) {
+interface UploadScreenProps {
+  onFileUpload: (file: File) => void
+  appError: string | null
+}
+
+export default function UploadScreen({ onFileUpload, appError }: UploadScreenProps) {
   const [isDragging, setIsDragging] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
-  const fileInputRef = useRef(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { theme, toggleTheme } = useTheme()
 
   const handleFile = useCallback(
-    (file) => {
+    (file: File) => {
       const name = file.name.toLowerCase()
       if (!name.endsWith('.ged') && !name.endsWith('.gedcom')) {
         setError('Please upload a .ged or .gedcom file')
@@ -23,7 +28,7 @@ export default function UploadScreen({ onFileUpload, appError }) {
   )
 
   const handleDrop = useCallback(
-    (e) => {
+    (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault()
       setIsDragging(false)
       const file = e.dataTransfer.files[0]
@@ -32,12 +37,12 @@ export default function UploadScreen({ onFileUpload, appError }) {
     [handleFile]
   )
 
-  const handleDragOver = useCallback((e) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragging(true)
   }, [])
 
-  const handleDragLeave = useCallback((e) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragging(false)
   }, [])

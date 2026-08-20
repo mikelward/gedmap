@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import type { AncestorEntry, GeocodedAncestor, MaybeGeocoded, UnmappedAncestors } from '../types'
 
 const GEN_LABELS = [
   'Self',
@@ -8,16 +9,38 @@ const GEN_LABELS = [
   'Great-great-grandparents',
 ]
 
-export default function AncestorSidebar({ ancestors, unmapped, onSelect, selectedId, open, onOpenChange, onViewAs, onViewAll }) {
+interface MappedItem extends GeocodedAncestor {
+  _mapped: true
+}
+
+interface UnmappedItem extends AncestorEntry {
+  _mapped: false
+  _reason: string
+}
+
+type SidebarItem = MappedItem | UnmappedItem
+
+interface AncestorSidebarProps {
+  ancestors: GeocodedAncestor[]
+  unmapped: UnmappedAncestors
+  onSelect: (ancestor: MaybeGeocoded) => void
+  selectedId: string | undefined
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onViewAs?: () => void
+  onViewAll?: () => void
+}
+
+export default function AncestorSidebar({ ancestors, unmapped, onSelect, selectedId, open, onOpenChange, onViewAs, onViewAll }: AncestorSidebarProps) {
   const [search, setSearch] = useState('')
   const setOpen = onOpenChange
 
   const { noPlace = [], geocodeFailed = [] } = unmapped
-  const allAncestors = useMemo(() => {
-    const mapped = ancestors.map((a) => ({ ...a, _mapped: true }))
-    const notMapped = [
-      ...noPlace.map((a) => ({ ...a, _mapped: false, _reason: 'No birth place' })),
-      ...geocodeFailed.map((a) => ({ ...a, _mapped: false, _reason: 'Not found' })),
+  const allAncestors = useMemo<SidebarItem[]>(() => {
+    const mapped: SidebarItem[] = ancestors.map((a) => ({ ...a, _mapped: true }))
+    const notMapped: SidebarItem[] = [
+      ...noPlace.map((a): SidebarItem => ({ ...a, _mapped: false, _reason: 'No birth place' })),
+      ...geocodeFailed.map((a): SidebarItem => ({ ...a, _mapped: false, _reason: 'Not found' })),
     ]
     return [...mapped, ...notMapped]
   }, [ancestors, noPlace, geocodeFailed])
@@ -35,13 +58,13 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
 
   // Group by generation
   const grouped = useMemo(() => {
-    const groups = new globalThis.Map()
+    const groups = new Map<number, SidebarItem[]>()
     for (const a of filtered) {
       // "View all" people have no generation — keep them in their own
       // group (-1) rather than mislabeling everyone as "Self".
       const gen = a.generation ?? -1
       if (!groups.has(gen)) groups.set(gen, [])
-      groups.get(gen).push(a)
+      groups.get(gen)!.push(a)
     }
     return Array.from(groups.entries()).sort((a, b) => a[0] - b[0])
   }, [filtered])

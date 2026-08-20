@@ -75,3 +75,11 @@ export interface UnmappedAncestors {
   noPlace: AncestorEntry[]
   geocodeFailed: AncestorEntry[]
 }
+
+/**
+ * An ancestor that may or may not have a resolved map position — the shape
+ * of "whichever entry the user just clicked" (the map, the sidebar, or the
+ * unmapped list in StatsOverlay). `GeocodedAncestor`, `AncestorEntry`, and
+ * the sidebar's own tagged union are all assignable to this.
+ */
+export type MaybeGeocoded = AncestorEntry & Partial<Pick<GeocodedAncestor, 'lat' | 'lng' | 'country'>>

@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import UploadScreen from './UploadScreen'
 import { ThemeProvider } from '../ThemeContext'
 
-function renderUpload(props = {}) {
+function renderUpload(props: Partial<ComponentProps<typeof UploadScreen>> = {}) {
   return render(
     <ThemeProvider>
-      <UploadScreen onFileUpload={() => {}} {...props} />
+      <UploadScreen onFileUpload={() => {}} appError={null} {...props} />
     </ThemeProvider>
   )
 }
@@ -18,7 +19,7 @@ describe('UploadScreen file selection', () => {
     // so stub it to observe the reset.
     const onFileUpload = vi.fn()
     const { container } = renderUpload({ onFileUpload })
-    const input = container.querySelector('input[type="file"]')
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
 
     let value = 'C:\\fakepath\\family.ged'
     Object.defineProperty(input, 'value', {

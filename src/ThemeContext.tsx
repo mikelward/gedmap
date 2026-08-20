@@ -1,12 +1,19 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 
-const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} })
+export type Theme = 'dark' | 'light'
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
+interface ThemeContextValue {
+  theme: Theme
+  toggleTheme: () => void
+}
+
+const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', toggleTheme: () => {} })
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('theme')
-      if (stored) return stored
+      if (stored === 'dark' || stored === 'light') return stored
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     }
     return 'dark'
@@ -33,6 +40,6 @@ export function ThemeProvider({ children }) {
   )
 }
 
-export function useTheme() {
+export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext)
 }

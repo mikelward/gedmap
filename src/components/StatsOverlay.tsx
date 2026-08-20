@@ -1,6 +1,14 @@
 import { useState } from 'react'
+import type { AncestorEntry, GeocodedAncestor, UnmappedAncestors } from '../types'
 
-export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, sidebarOpen }) {
+interface StatsOverlayProps {
+  ancestors: GeocodedAncestor[]
+  unmapped: UnmappedAncestors
+  onSelectUnmapped: (ancestor: AncestorEntry) => void
+  sidebarOpen: boolean
+}
+
+export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, sidebarOpen }: StatsOverlayProps) {
   const [showUnmapped, setShowUnmapped] = useState(false)
   const countries = new Set(ancestors.map((a) => a.country))
   const { noPlace = [], geocodeFailed = [] } = unmapped

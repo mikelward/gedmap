@@ -13,6 +13,7 @@ Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces o
 
 | Concern | Choice | Why |
 |---------|--------|-----|
+| Language | TypeScript (strict) | Domain model (`src/types.ts`) shared by the parser, geocoder, and every component |
 | Framework | React 19 + Vite 8 | Fast dev/build, modern defaults |
 | Map | Mapbox GL JS 3.x + react-map-gl 8.x | Best clustering support, dark styles |
 | GEDCOM parsing | Custom parser | `parse-gedcom` npm crashes on CONC/CONT lines with pointer values |
@@ -26,19 +27,20 @@ Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces o
 
 ```
 src/
-├── App.jsx                    # State machine: upload → loading → map
-├── main.jsx                   # React 19 createRoot bootstrap
+├── App.tsx                    # State machine: upload → loading → map
+├── main.tsx                   # React 19 createRoot bootstrap
 ├── index.css                  # Tailwind + mapbox-gl CSS imports
+├── types.ts                   # Shared domain model (Individual, AncestorEntry, GeocodedAncestor, ...)
 ├── components/
-│   ├── UploadScreen.jsx       # Landing page, drag & drop file upload
-│   ├── LoadingScreen.jsx      # Geocoding progress bar
-│   ├── MapView.jsx            # Mapbox map, clustering, click handlers
-│   ├── AncestorSheet.jsx      # Bottom sheet (mobile) / popup (desktop)
-│   ├── AncestorSidebar.jsx    # Searchable ancestor list panel
-│   └── StatsOverlay.jsx       # "X ancestors across Y countries"
+│   ├── UploadScreen.tsx       # Landing page, drag & drop file upload
+│   ├── LoadingScreen.tsx      # Geocoding progress bar
+│   ├── MapView.tsx            # Mapbox map, clustering, click handlers
+│   ├── AncestorSheet.tsx      # Bottom sheet (mobile) / popup (desktop)
+│   ├── AncestorSidebar.tsx    # Searchable ancestor list panel
+│   └── StatsOverlay.tsx       # "X ancestors across Y countries"
 └── utils/
-    ├── parseGedcom.js         # GEDCOM tokenizer, tree builder, ancestor filter
-    └── geocode.js             # HERE geocoding with in-memory cache
+    ├── parseGedcom.ts         # GEDCOM tokenizer, tree builder, ancestor filter
+    └── geocode.ts             # HERE geocoding with in-memory cache
 ```
 
 ---

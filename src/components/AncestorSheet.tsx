@@ -1,6 +1,12 @@
 import { Drawer } from 'vaul'
+import type { AncestorEntry } from '../types'
 
-function AncestorDetail({ ancestor, onNavigate }) {
+interface AncestorDetailProps {
+  ancestor: AncestorEntry | null
+  onNavigate: (id: string) => void
+}
+
+function AncestorDetail({ ancestor, onNavigate }: AncestorDetailProps) {
   if (!ancestor) return null
 
   return (
@@ -90,7 +96,14 @@ function AncestorDetail({ ancestor, onNavigate }) {
   )
 }
 
-export function MobileSheet({ ancestor, open, onClose, onNavigate }) {
+interface MobileSheetProps {
+  ancestor: AncestorEntry | null
+  open: boolean
+  onClose: () => void
+  onNavigate: (id: string) => void
+}
+
+export function MobileSheet({ ancestor, open, onClose, onNavigate }: MobileSheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Portal>
@@ -106,7 +119,19 @@ export function MobileSheet({ ancestor, open, onClose, onNavigate }) {
   )
 }
 
-export function DesktopPopup({ ancestor, position, onClose, onNavigate }) {
+interface PopupPosition {
+  x: number
+  y: number
+}
+
+interface DesktopPopupProps {
+  ancestor: AncestorEntry | null
+  position: PopupPosition | null
+  onClose: () => void
+  onNavigate: (id: string) => void
+}
+
+export function DesktopPopup({ ancestor, position, onClose, onNavigate }: DesktopPopupProps) {
   if (!ancestor) return null
 
   const style = position

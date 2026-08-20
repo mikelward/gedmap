@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { PROVIDERS } from './exportGuideData'
+import { PROVIDERS, type Provider } from './exportGuideData'
 
-function ProviderGuide({ provider }) {
+function ProviderGuide({ provider }: { provider: Provider }) {
   return (
     <details className="group border-b border-gray-200 dark:border-gray-800 last:border-b-0">
       <summary
@@ -47,18 +47,23 @@ const FOCUSABLE =
 
 // An element is reachable by Tab only if it is not hidden inside a collapsed
 // <details> (the <summary> itself stays reachable).
-function isReachable(el) {
-  for (let node = el; node && node.parentElement; node = node.parentElement) {
+function isReachable(el: Element): boolean {
+  for (let node: Element | null = el; node && node.parentElement; node = node.parentElement) {
     const parent = node.parentElement
-    if (parent.tagName === 'DETAILS' && !parent.open && node.tagName !== 'SUMMARY') {
+    if (parent.tagName === 'DETAILS' && !(parent as HTMLDetailsElement).open && node.tagName !== 'SUMMARY') {
       return false
     }
   }
   return true
 }
 
-export default function ExportGuide({ open, onClose }) {
-  const dialogRef = useRef(null)
+interface ExportGuideProps {
+  open: boolean
+  onClose: () => void
+}
+
+export default function ExportGuide({ open, onClose }: ExportGuideProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -67,7 +72,7 @@ export default function ExportGuide({ open, onClose }) {
     const previouslyFocused = document.activeElement
     dialogRef.current?.focus()
 
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose()
         return
@@ -77,7 +82,7 @@ export default function ExportGuide({ open, onClose }) {
       // Trap Tab order within the dialog so the background stays unreachable.
       const dialog = dialogRef.current
       if (!dialog) return
-      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE)).filter(
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
         isReachable
       )
       if (focusable.length === 0) {

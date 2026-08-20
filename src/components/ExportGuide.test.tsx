@@ -56,7 +56,7 @@ describe('ExportGuide', () => {
   it('calls onClose when the backdrop is clicked', () => {
     const onClose = vi.fn()
     render(<ExportGuide open={true} onClose={onClose} />)
-    fireEvent.click(screen.getByRole('dialog').parentElement)
+    fireEvent.click(screen.getByRole('dialog').parentElement!)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

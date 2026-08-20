@@ -1,26 +1,28 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import AncestorSidebar from './AncestorSidebar'
+import { makeAncestorEntry, makeGeocodedAncestor } from '../testFixtures'
+import type { ComponentProps } from 'react'
 
 const ANCESTORS = [
-  { id: '1', name: 'Root Person', generation: 0, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' },
-  { id: '2', name: 'Father Test', generation: 1, relationship: 'Father', birthPlace: 'Melbourne', lat: -37.8, lng: 144.9, country: 'Australia' },
-  { id: '3', name: 'Mother Test', generation: 1, relationship: 'Mother', birthPlace: 'Brisbane', lat: -27.4, lng: 153.0, country: 'Australia' },
-  { id: '4', name: 'Grandfather', generation: 2, relationship: 'Paternal Grandfather', birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' },
+  makeGeocodedAncestor({ id: '1', name: 'Root Person', generation: 0, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' }),
+  makeGeocodedAncestor({ id: '2', name: 'Father Test', generation: 1, relationship: 'Father', birthPlace: 'Melbourne', lat: -37.8, lng: 144.9, country: 'Australia' }),
+  makeGeocodedAncestor({ id: '3', name: 'Mother Test', generation: 1, relationship: 'Mother', birthPlace: 'Brisbane', lat: -27.4, lng: 153.0, country: 'Australia' }),
+  makeGeocodedAncestor({ id: '4', name: 'Grandfather', generation: 2, relationship: 'Paternal Grandfather', birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' }),
 ]
 
 const UNMAPPED = {
-  noPlace: [{ id: '5', name: 'No Place Person', generation: 2 }],
-  geocodeFailed: [{ id: '6', name: 'Failed Person', generation: 2, birthPlace: 'Nowhere' }],
+  noPlace: [makeAncestorEntry({ id: '5', name: 'No Place Person', generation: 2 })],
+  geocodeFailed: [makeAncestorEntry({ id: '6', name: 'Failed Person', generation: 2, birthPlace: 'Nowhere' })],
 }
 
-function renderSidebar(props = {}) {
+function renderSidebar(props: Partial<ComponentProps<typeof AncestorSidebar>> = {}) {
   return render(
     <AncestorSidebar
       ancestors={ANCESTORS}
       unmapped={UNMAPPED}
       onSelect={() => {}}
-      selectedId={null}
+      selectedId={undefined}
       open={true}
       onOpenChange={() => {}}
       onViewAs={() => {}}
@@ -117,8 +119,8 @@ describe('AncestorSidebar', () => {
   it('does not label generation-less people (View all mode) as Self', () => {
     renderSidebar({
       ancestors: [
-        { id: '1', name: 'Someone', generation: null, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' },
-        { id: '2', name: 'Someone Else', generation: null, relationship: null, birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' },
+        makeGeocodedAncestor({ id: '1', name: 'Someone', generation: null, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' }),
+        makeGeocodedAncestor({ id: '2', name: 'Someone Else', generation: null, relationship: null, birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' }),
       ],
       unmapped: { noPlace: [], geocodeFailed: [] },
     })

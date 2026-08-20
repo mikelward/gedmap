@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import PersonPicker from './PersonPicker'
 import { ThemeProvider } from '../ThemeContext'
 
@@ -9,13 +10,14 @@ const PEOPLE = [
   { id: '@I3@', name: 'James Brown', birthDate: null, birthPlace: null },
 ]
 
-function renderPicker(props = {}) {
+function renderPicker(props: Partial<ComponentProps<typeof PersonPicker>> = {}) {
   return render(
     <ThemeProvider>
       <PersonPicker
         allPeople={PEOPLE}
         defaultRootId="@I1@"
         onSelect={() => {}}
+        appError={null}
         {...props}
       />
     </ThemeProvider>

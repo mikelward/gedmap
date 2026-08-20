@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps, ReactNode } from 'react'
 import MapView from './MapView'
 import { ThemeProvider } from '../ThemeContext'
 
@@ -13,10 +14,10 @@ vi.mock('react-map-gl/mapbox', () => ({
 // Mock vaul Drawer (used by MobileSheet)
 vi.mock('vaul', () => ({
   Drawer: {
-    Root: ({ children, open }) => <div>{open ? children : null}</div>,
-    Portal: ({ children }) => <div>{children}</div>,
+    Root: ({ children, open }: { children: ReactNode; open: boolean }) => <div>{open ? children : null}</div>,
+    Portal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     Overlay: () => null,
-    Content: ({ children }) => <div>{children}</div>,
+    Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   },
 }))
 
@@ -54,7 +55,7 @@ const ROOT_ANCESTOR = {
   children: [],
 }
 
-function renderMapView(props = {}) {
+function renderMapView(props: Partial<ComponentProps<typeof MapView>> = {}) {
   return render(
     <ThemeProvider>
       <MapView

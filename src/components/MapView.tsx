@@ -1,15 +1,17 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
-import MapGL, { Source, Layer } from 'react-map-gl/mapbox'
+import MapGL, { Source, Layer, type MapRef, type LayerProps } from 'react-map-gl/mapbox'
+import type { MapLayerMouseEvent } from 'mapbox-gl'
 import StatsOverlay from './StatsOverlay'
 import MiniMap from './MiniMap'
 import AncestorSidebar from './AncestorSidebar'
 import { MobileSheet, DesktopPopup } from './AncestorSheet'
 import { useTheme } from '../ThemeContext'
+import type { GeocodedAncestor, MaybeGeocoded, UnmappedAncestors } from '../types'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
-function makeLayers(isDark) {
-  const clusterLayer = {
+function makeLayers(isDark: boolean) {
+  const clusterLayer: LayerProps = {
     id: 'clusters',
     type: 'circle',
     source: 'ancestors',
@@ -21,7 +23,7 @@ function makeLayers(isDark) {
     },
   }
 
-  const clusterCountLayer = {
+  const clusterCountLayer: LayerProps = {
     id: 'cluster-count',
     type: 'symbol',
     source: 'ancestors',
@@ -36,7 +38,7 @@ function makeLayers(isDark) {
     },
   }
 
-  const unclusteredPointLayer = {
+  const unclusteredPointLayer: LayerProps = {
     id: 'unclustered-point',
     type: 'circle',
     source: 'ancestors',
@@ -49,7 +51,7 @@ function makeLayers(isDark) {
     },
   }
 
-  const unclusteredLabelLayer = {
+  const unclusteredLabelLayer: LayerProps = {
     id: 'unclustered-label',
     type: 'symbol',
     source: 'ancestors',
@@ -74,14 +76,14 @@ function makeLayers(isDark) {
   return { clusterLayer, clusterCountLayer, unclusteredPointLayer, unclusteredLabelLayer }
 }
 
-function useIsMobile() {
+function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth < 768
   )
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
-    const handler = (e) => setIsMobile(e.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
@@ -89,10 +91,38 @@ function useIsMobile() {
   return isMobile
 }
 
-export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
-  const mapRef = useRef(null)
-  const [selected, setSelected] = useState(null)
-  const [popupPos, setPopupPos] = useState(null)
+interface AncestorFeature {
+  type: 'Feature'
+  geometry: { type: 'Point'; coordinates: [number, number] }
+  properties: { id: string; name: string }
+}
+
+interface AncestorFeatureCollection {
+  type: 'FeatureCollection'
+  features: AncestorFeature[]
+}
+
+interface InitialView {
+  center?: { longitude: number; latitude: number; zoom: number }
+  bounds?: [[number, number], [number, number]]
+}
+
+interface PopupPosition {
+  x: number
+  y: number
+}
+
+interface MapViewProps {
+  ancestors: GeocodedAncestor[]
+  unmapped: UnmappedAncestors
+  onViewAs: () => void
+  onViewAll: () => void
+}
+
+export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }: MapViewProps) {
+  const mapRef = useRef<MapRef | null>(null)
+  const [selected, setSelected] = useState<MaybeGeocoded | null>(null)
+  const [popupPos, setPopupPos] = useState<PopupPosition | null>(null)
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
   const { theme, toggleTheme } = useTheme()
@@ -105,7 +135,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
   const layers = useMemo(() => makeLayers(isDark), [isDark])
 
   const ancestorLookup = useMemo(() => {
-    const lookup = new globalThis.Map()
+    const lookup = new Map<string, MaybeGeocoded>()
     ancestors.forEach((a) => lookup.set(a.id, a))
     const { noPlace = [], geocodeFailed = [] } = unmapped
     for (const a of [...noPlace, ...geocodeFailed]) {
@@ -114,17 +144,17 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
     return lookup
   }, [ancestors, unmapped])
 
-  const geojson = useMemo(() => {
+  const geojson = useMemo<AncestorFeatureCollection>(() => {
     const STEP_LAT = 0.03
-    const coordKey = (a) => `${a.lng.toFixed(2)},${a.lat.toFixed(2)}`
-    const groups = new globalThis.Map()
+    const coordKey = (a: GeocodedAncestor) => `${a.lng.toFixed(2)},${a.lat.toFixed(2)}`
+    const groups = new Map<string, GeocodedAncestor[]>()
     for (const a of ancestors) {
       const key = coordKey(a)
       if (!groups.has(key)) groups.set(key, [])
-      groups.get(key).push(a)
+      groups.get(key)!.push(a)
     }
 
-    const features = []
+    const features: AncestorFeature[] = []
     for (const group of groups.values()) {
       const offsetStart = -((group.length - 1) / 2) * STEP_LAT
       group.forEach((a, i) => {
@@ -142,7 +172,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
     return { type: 'FeatureCollection', features }
   }, [ancestors])
 
-  const initialView = useMemo(() => {
+  const initialView = useMemo<InitialView | undefined>(() => {
     if (ancestors.length === 0) return undefined
     const root = ancestors.find((a) => a.generation === 0)
     if (root) {
@@ -158,7 +188,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
     }
   }, [ancestors])
 
-  const flyTo = useCallback((lng, lat) => {
+  const flyTo = useCallback((lng: number, lat: number) => {
     const ref = mapRef.current
     if (!ref) return
     const map = ref.getMap ? ref.getMap() : ref
@@ -166,7 +196,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
   }, [])
 
   const handleNavigate = useCallback(
-    (id) => {
+    (id: string) => {
       const ancestor = ancestorLookup.get(id)
       if (!ancestor) return
       setSelected(ancestor)
@@ -178,7 +208,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
   )
 
   const handleClick = useCallback(
-    (e) => {
+    (e: MapLayerMouseEvent) => {
       const mapWrapper = mapRef.current
       if (!mapWrapper) return
 
@@ -188,22 +218,16 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
         layers: ['clusters'],
       })
       if (clusterFeatures.length > 0) {
-        const clusterId = clusterFeatures[0].properties.cluster_id
+        const clusterId = clusterFeatures[0].properties?.cluster_id
         const source = map.getSource('ancestors')
-        const result = source.getClusterExpansionZoom(clusterId)
-        const handleZoom = (zoom) => {
+        if (!source || !('getClusterExpansionZoom' in source)) return
+        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err || zoom == null) return
           map.easeTo({
-            center: clusterFeatures[0].geometry.coordinates,
+            center: (clusterFeatures[0].geometry as GeoJSON.Point).coordinates as [number, number],
             zoom,
           })
-        }
-        if (result && typeof result.then === 'function') {
-          result.then(handleZoom).catch(() => {})
-        } else {
-          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (!err) handleZoom(zoom)
-          })
-        }
+        })
         return
       }
 
@@ -211,9 +235,9 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
         layers: ['unclustered-point'],
       })
       if (pointFeatures.length > 0) {
-        const id = pointFeatures[0].properties.id
-        const ancestor = ancestorLookup.get(id)
-        if (ancestor) {
+        const id = pointFeatures[0].properties?.id
+        const ancestor = id != null ? ancestorLookup.get(id) : undefined
+        if (ancestor && ancestor.lat != null && ancestor.lng != null) {
           setSelected(ancestor)
           setPopupPos({ x: e.point.x, y: e.point.y })
           flyTo(ancestor.lng, ancestor.lat)
@@ -226,7 +250,7 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }) {
     [ancestorLookup, flyTo]
   )
 
-  const handleSelectFromList = useCallback((ancestor) => {
+  const handleSelectFromList = useCallback((ancestor: MaybeGeocoded) => {
     setSelected(ancestor)
     if (ancestor.lat != null && ancestor.lng != null) {
       setPopupPos(null)

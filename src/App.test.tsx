@@ -7,10 +7,12 @@ vi.mock('./utils/geocode', () => ({
   geocodeAncestors: vi.fn(),
 }))
 
+const mockedGeocodeAncestors = vi.mocked(geocodeAncestors)
+
 // MapView pulls in mapbox-gl, which jsdom can't run — stub it with just
 // the "View as…" action the tests need.
 vi.mock('./components/MapView', () => ({
-  default: ({ onViewAs }) => <button onClick={onViewAs}>Back to picker</button>,
+  default: ({ onViewAs }: { onViewAs: () => void }) => <button onClick={onViewAs}>Back to picker</button>,
 }))
 
 const GEDCOM = `0 @I1@ INDI
@@ -21,20 +23,20 @@ const GEDCOM = `0 @I1@ INDI
 0 TRLR
 `
 
-function uploadGedcom(container) {
+function uploadGedcom(container: HTMLElement) {
   const file = new File([GEDCOM], 'family.ged', { type: 'text/plain' })
   file.text = () => Promise.resolve(GEDCOM)
-  const input = container.querySelector('input[type="file"]')
+  const input = container.querySelector('input[type="file"]')!
   fireEvent.change(input, { target: { files: [file] } })
 }
 
 describe('App', () => {
   beforeEach(() => {
-    geocodeAncestors.mockReset()
+    mockedGeocodeAncestors.mockReset()
   })
 
   it('walks upload → pick → map', async () => {
-    geocodeAncestors.mockResolvedValue({ geocoded: [], geocodeFailed: [] })
+    mockedGeocodeAncestors.mockResolvedValue({ geocoded: [], geocodeFailed: [] })
     const { container } = render(<App />)
 
     uploadGedcom(container)
@@ -45,7 +47,7 @@ describe('App', () => {
   })
 
   it('shows an error when loading ancestors fails', async () => {
-    geocodeAncestors.mockRejectedValue(new Error('network down'))
+    mockedGeocodeAncestors.mockRejectedValue(new Error('network down'))
     const { container } = render(<App />)
 
     uploadGedcom(container)
@@ -55,7 +57,7 @@ describe('App', () => {
   })
 
   it('does not show a stale error in the picker after a successful retry', async () => {
-    geocodeAncestors
+    mockedGeocodeAncestors
       .mockRejectedValueOnce(new Error('network down'))
       .mockResolvedValue({ geocoded: [], geocodeFailed: [] })
     const { container } = render(<App />)

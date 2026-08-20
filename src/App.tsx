@@ -5,19 +5,22 @@ import LoadingScreen from './components/LoadingScreen'
 import MapView from './components/MapView'
 import { parseGedcomFile, collectAncestorsForRoot, collectAll } from './utils/parseGedcom'
 import { geocodeAncestors } from './utils/geocode'
+import type { GeocodedAncestor, ParsedGedcom, UnmappedAncestors } from './types'
+
+type AppState = 'upload' | 'pick' | 'loading' | 'map'
 
 function App() {
-  const [state, setState] = useState('upload') // upload | pick | loading | map
-  const [ancestors, setAncestors] = useState([])
+  const [state, setState] = useState<AppState>('upload')
+  const [ancestors, setAncestors] = useState<GeocodedAncestor[]>([])
   const [geocodeProgress, setGeocodeProgress] = useState({ done: 0, total: 0 })
-  const [unmapped, setUnmapped] = useState({ noPlace: [], geocodeFailed: [] })
-  const [error, setError] = useState(null)
+  const [unmapped, setUnmapped] = useState<UnmappedAncestors>({ noPlace: [], geocodeFailed: [] })
+  const [error, setError] = useState<string | null>(null)
 
   // Parsed file data, kept so the user can switch anchor person
-  const parsedRef = useRef(null)
+  const parsedRef = useRef<ParsedGedcom | null>(null)
 
-  const loadAncestors = useCallback(async (rootId) => {
-    const { individuals } = parsedRef.current
+  const loadAncestors = useCallback(async (rootId: string | undefined) => {
+    const { individuals } = parsedRef.current!
     const { withPlace, noPlace } = collectAncestorsForRoot(individuals, rootId)
 
     if (withPlace.length === 0 && noPlace.length === 0) {
@@ -39,7 +42,7 @@ function App() {
     setState('map')
   }, [])
 
-  const handleFileUpload = useCallback(async (file) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     try {
       const text = await file.text()
       const parsed = parseGedcomFile(text)
@@ -60,7 +63,7 @@ function App() {
     }
   }, [])
 
-  const handlePickPerson = useCallback(async (rootId) => {
+  const handlePickPerson = useCallback(async (rootId: string) => {
     try {
       await loadAncestors(rootId)
     } catch (err) {
@@ -76,7 +79,7 @@ function App() {
 
   const handleViewAll = useCallback(async () => {
     try {
-      const { individuals } = parsedRef.current
+      const { individuals } = parsedRef.current!
       const { withPlace, noPlace } = collectAll(individuals)
 
       if (withPlace.length === 0 && noPlace.length === 0) {
@@ -104,7 +107,7 @@ function App() {
   }
 
   if (state === 'pick') {
-    const { allPeople, defaultRootId } = parsedRef.current
+    const { allPeople, defaultRootId } = parsedRef.current!
     return (
       <PersonPicker
         allPeople={allPeople}

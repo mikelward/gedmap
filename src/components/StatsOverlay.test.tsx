@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import StatsOverlay from './StatsOverlay'
+import { makeAncestorEntry, makeGeocodedAncestor } from '../testFixtures'
 
 const ANCESTORS = [
-  { id: '1', name: 'Alice', country: 'Australia' },
-  { id: '2', name: 'Bob', country: 'Australia' },
-  { id: '3', name: 'Carol', country: 'England' },
+  makeGeocodedAncestor({ id: '1', name: 'Alice', lat: 0, lng: 0, country: 'Australia' }),
+  makeGeocodedAncestor({ id: '2', name: 'Bob', lat: 0, lng: 0, country: 'Australia' }),
+  makeGeocodedAncestor({ id: '3', name: 'Carol', lat: 0, lng: 0, country: 'England' }),
 ]
 
 describe('StatsOverlay', () => {
@@ -25,7 +26,7 @@ describe('StatsOverlay', () => {
   it('uses singular for 1 ancestor / 1 country', () => {
     render(
       <StatsOverlay
-        ancestors={[{ id: '1', name: 'A', country: 'UK' }]}
+        ancestors={[makeGeocodedAncestor({ id: '1', name: 'A', lat: 0, lng: 0, country: 'UK' })]}
         unmapped={{ noPlace: [], geocodeFailed: [] }}
         onSelectUnmapped={() => {}}
         sidebarOpen={false}
@@ -36,8 +37,8 @@ describe('StatsOverlay', () => {
   })
 
   it('shows unmapped count and expands on click', () => {
-    const noPlace = [{ id: '4', name: 'Dave' }]
-    const geocodeFailed = [{ id: '5', name: 'Eve', birthPlace: 'Nowhere' }]
+    const noPlace = [makeAncestorEntry({ id: '4', name: 'Dave' })]
+    const geocodeFailed = [makeAncestorEntry({ id: '5', name: 'Eve', birthPlace: 'Nowhere' })]
 
     render(
       <StatsOverlay
@@ -73,7 +74,7 @@ describe('StatsOverlay', () => {
 
   it('calls onSelectUnmapped when clicking an unmapped person', () => {
     const handler = vi.fn()
-    const noPlace = [{ id: '4', name: 'Unique Dave' }]
+    const noPlace = [makeAncestorEntry({ id: '4', name: 'Unique Dave' })]
 
     render(
       <StatsOverlay

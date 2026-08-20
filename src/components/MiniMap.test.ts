@@ -4,19 +4,19 @@ import { describe, it, expect } from 'vitest'
 // The actual MiniMap component depends on canvas + mapbox refs, so we test
 // the pure projection functions rather than the full component.
 
-// These are copied from MiniMap.jsx — if they change there, update here.
-function lngToX(lng, w) {
+// These are copied from MiniMap.tsx — if they change there, update here.
+function lngToX(lng: number, w: number): number {
   return ((lng + 180) / 360) * w
 }
-function latToY(lat, w, h) {
+function latToY(lat: number, w: number, h: number): number {
   const latRad = (lat * Math.PI) / 180
   const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2))
   return h / 2 - (w * mercN) / (2 * Math.PI)
 }
-function xToLng(x, w) {
+function xToLng(x: number, w: number): number {
   return (x / w) * 360 - 180
 }
-function yToLat(y, w, h) {
+function yToLat(y: number, w: number, h: number): number {
   const mercN = ((h / 2 - y) * 2 * Math.PI) / w
   return (Math.atan(Math.sinh(mercN)) * 180) / Math.PI
 }

@@ -1,6 +1,13 @@
+export interface Provider {
+  name: string
+  helpUrl: string
+  steps: string[]
+  note: string | null
+}
+
 // Step-by-step instructions for exporting a GEDCOM file from the major
 // genealogy sites. Steps verified against each provider's official help docs.
-export const PROVIDERS = [
+export const PROVIDERS: Provider[] = [
   {
     name: 'Ancestry',
     helpUrl:

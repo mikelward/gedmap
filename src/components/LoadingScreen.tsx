@@ -1,6 +1,11 @@
 import { useTheme } from '../ThemeContext'
 
-export default function LoadingScreen({ done, total }) {
+interface LoadingScreenProps {
+  done: number
+  total: number
+}
+
+export default function LoadingScreen({ done, total }: LoadingScreenProps) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   const { theme, toggleTheme } = useTheme()
 

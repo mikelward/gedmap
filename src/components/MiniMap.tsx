@@ -1,5 +1,7 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, type RefObject } from 'react'
+import type { MapRef } from 'react-map-gl/mapbox'
 import { useTheme } from '../ThemeContext'
+import type { GeocodedAncestor } from '../types'
 
 const DESKTOP_W = 160
 const DESKTOP_H = 100
@@ -15,26 +17,39 @@ const COLORS = {
   light: { bg: '#e5e7eb', dot: '#d97706', viewport: 'rgba(0,0,0,0.4)', border: 'rgba(0,0,0,0.15)' },
 }
 
+interface ViewportBounds {
+  west: number
+  north: number
+  east: number
+  south: number
+}
+
 // Mercator projection helpers (parameterized by canvas size)
-function lngToX(lng, w) {
+function lngToX(lng: number, w: number): number {
   return ((lng + 180) / 360) * w
 }
-function latToY(lat, w, h) {
+function latToY(lat: number, w: number, h: number): number {
   const latRad = (lat * Math.PI) / 180
   const mercN = Math.log(Math.tan(Math.PI / 4 + latRad / 2))
   return h / 2 - (w * mercN) / (2 * Math.PI)
 }
-function xToLng(x, w) {
+function xToLng(x: number, w: number): number {
   return (x / w) * 360 - 180
 }
-function yToLat(y, w, h) {
+function yToLat(y: number, w: number, h: number): number {
   const mercN = ((h / 2 - y) * 2 * Math.PI) / w
   return (Math.atan(Math.sinh(mercN)) * 180) / Math.PI
 }
 
-export default function MiniMap({ ancestors, mapRef, isMobile }) {
-  const canvasRef = useRef(null)
-  const [viewport, setViewport] = useState(null)
+interface MiniMapProps {
+  ancestors: GeocodedAncestor[]
+  mapRef: RefObject<MapRef | null>
+  isMobile: boolean
+}
+
+export default function MiniMap({ ancestors, mapRef, isMobile }: MiniMapProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [viewport, setViewport] = useState<ViewportBounds | null>(null)
   const [expanded, setExpanded] = useState(false)
   const { theme } = useTheme()
   const colors = COLORS[theme] || COLORS.dark
@@ -75,6 +90,7 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
+    if (!ctx) return
     const dpr = window.devicePixelRatio || 1
     canvas.width = w * dpr
     canvas.height = h * dpr
@@ -109,7 +125,7 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
   }, [ancestors, viewport, w, h, dotR, isMobile, expanded, colors])
 
   const handleClick = useCallback(
-    (e) => {
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
       // On mobile collapsed, just expand
       if (isMobile && !expanded) {
         setExpanded(true)
@@ -135,8 +151,8 @@ export default function MiniMap({ ancestors, mapRef, isMobile }) {
   // Collapse when tapping outside (mobile expanded)
   useEffect(() => {
     if (!isMobile || !expanded) return
-    const handleOutside = (e) => {
-      if (canvasRef.current && !canvasRef.current.contains(e.target)) {
+    const handleOutside = (e: PointerEvent) => {
+      if (canvasRef.current && !canvasRef.current.contains(e.target as Node)) {
         setExpanded(false)
       }
     }

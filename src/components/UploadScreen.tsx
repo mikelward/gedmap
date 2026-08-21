@@ -114,7 +114,10 @@ export default function UploadScreen({ onFileUpload, appError }: UploadScreenPro
         <input
           ref={fileInputRef}
           type="file"
-          accept="*/*"
+          // No `accept` — even accept="*/*" is enough of a hint for some
+          // mobile browsers to default the native picker to Photos instead
+          // of Files, with no reliable way to steer that from the page.
+          // handleFile() below already validates the .ged/.gedcom extension.
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]

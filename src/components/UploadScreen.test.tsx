@@ -13,6 +13,18 @@ function renderUpload(props: Partial<ComponentProps<typeof UploadScreen>> = {}) 
 }
 
 describe('UploadScreen file selection', () => {
+  it('has no accept restriction on the file input', () => {
+    // Regression test: a restrictive `accept` (even the permissive-looking
+    // "*/*") is enough of a hint for some mobile browsers to default the
+    // native picker to Photos instead of Files, with no way to steer that
+    // from the page — see the "Fix file upload defaulting to photos-only on
+    // mobile" commit this repo already shipped once. handleFile() validates
+    // the .ged/.gedcom extension after selection instead.
+    const { container } = renderUpload()
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+    expect(input.hasAttribute('accept')).toBe(false)
+  })
+
   it('clears the input value so the same file can be selected again', () => {
     // Browsers skip the change event when the same file is re-selected unless
     // the input's value is reset. jsdom never populates a file input's value,

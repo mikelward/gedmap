@@ -312,7 +312,6 @@ stopped biting.
 
   | Prefix | For |
   |---|---|
-  | `deps:` | Dependency bumps — the weekly batch and any by hand |
   | `docs:` | Prose: `spec.md`, this file, the rest of the Markdown |
   | `todo:` | `TODO.md` bookkeeping on its own |
   | `test:` | Tests only, with the code under test unchanged |
@@ -322,12 +321,15 @@ stopped biting.
 - **No `feat:` or `fix:`, on purpose** — they would prefix nearly everything
   left and leave the log as flat as it is now. The prefix marks the exception,
   so the default stays bare.
-- **`deps:` is what earns the rule here**: 33 of the last 50 commits are the
-  weekly batch, every one reading `Update dependencies (<date>)`, so the log's
-  dominant line says nothing about whether the app changed.
-  `.github/workflows/npm-update.yml` writes the prefix itself. A bump
-  taken *because* of the behavior it changes is a behavior change — bare, and
-  say what changed.
+- **No `deps:` either — a dependency bump changes what the app runs, so it's
+  bare like any other release-worthy change.**
+  `.github/workflows/npm-update.yml` used to write a `deps:` prefix on the
+  weekly batch specifically, which is how 33 of the last 50 commits ended up
+  reading `deps: Update dependencies (<date>)` with nothing to say whether
+  the app actually changed. That prefix is gone now: a bump taken *because*
+  of the behavior it changes still says what changed; the routine weekly
+  bump has nothing extra to say, but it's bare too — matching a dependency
+  bump's own definition of release-worthy.
 - **`TODO.md` and `spec.md` ride along and never decide the prefix** — either
   counts only when it is the whole change.
 - **A mixed commit goes bare if any part of it changes behavior.** Below that

@@ -15,6 +15,25 @@ do:
       job and its parity test (`workflow-check-rename.test.js`) in a
       follow-up PR.
 
+## Review and merge gates
+
+- [ ] **Add `zizmor` to the ruleset's required set** once it has reported
+      on a pull request: the zizmor workflow now runs unfiltered on every
+      PR precisely so it can be required (a paths-filtered workflow
+      creates no check run at all on a non-matching PR, which a ruleset
+      waits on forever) — the posture piloted in mikelward/lanes and
+      mikelward/ci-commit-artifact. `repo-rules mikelward/gedmap` (naming
+      every check the ruleset should require — `mikelward/scripts`' tool).
+      **Precondition:** the weekly dependency PR is authored with
+      `GITHUB_TOKEN`, which triggers no `pull_request` workflows, so a
+      required `zizmor` would block it forever — the same trap
+      npm-update's explicit `ci.yml`/`codex-review-check.yml` dispatches
+      exist for (see npm-update.test.js). Before flipping the ruleset,
+      give zizmor.yml a `workflow_dispatch` trigger and teach
+      mikelward/npm-update's reusable workflow to dispatch it — a
+      shared-mechanism change that lands in that repo, piloted through
+      one consumer per its conventions.
+
 ## Decisions needing review
 
 Guesses made under autopilot, recorded so nothing decided without the

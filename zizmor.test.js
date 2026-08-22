@@ -2,16 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-// Tests for the advisory zizmor scan: the workflow that runs it and the
+// Tests for the required zizmor scan: the workflow that runs it and the
 // policy it loads.
 //
 // The scan's failure modes are all silent: a dropped version pin floats the
 // audit set, so a verdict can change with no change in this repository; a
 // dropped --offline puts the GitHub API inside the scan; a widened policy
-// exempts refs nobody decided to exempt; a narrowed path filter stops
-// re-running the scan on the files it audits. Every one of those leaves the
-// rest of the suite green, because zizmor only runs inside its own
-// workflow — so the contract is pinned here. Read with regexes like the
+// exempts refs nobody decided to exempt; a reintroduced path filter means a
+// required `zizmor` creates no check run at all on a PR that doesn't touch
+// the filtered paths, leaving it unmergeable forever. Every one of those
+// leaves the rest of the suite green, because zizmor only runs inside its
+// own workflow — so the contract is pinned here. Read with regexes like the
 // engine repositories' own suites: no YAML parser, on purpose. Ported from
 // mikelward/codex-review's own zizmor.test.js.
 
@@ -48,12 +49,25 @@ describe('zizmor workflow', () => {
     expect([...workflow.matchAll(/^ *permissions:/gm)]).toHaveLength(1);
   });
 
-  it('re-runs when anything it scans changes', () => {
-    const filters = [...workflow.matchAll(/paths: \[(.+)\]/g)].map((m) => m[1]);
-    expect(filters).toHaveLength(2);
-    for (const f of filters) {
-      expect(f.split(',').map((p) => p.trim())).toEqual(["'.github/**'"]);
-    }
+  it('runs on every pull request and push to main, with no paths filter', () => {
+    // `zizmor` is required now, and a required check must report on every
+    // pull request's head: a workflow filtered out by `paths:` creates NO
+    // check run at all -- unlike a skipped job, which reports "skipped" and
+    // satisfies the ruleset -- so a filter here would leave any PR not
+    // touching the filtered paths unmergeable behind a check nothing
+    // reports. Matched as one contiguous block running straight from `on:`
+    // into `permissions:`, so `pull_request:` provably carries exactly one
+    // nested key: the explicit types list, `edited` included -- a retarget
+    // regenerates the merge ref against the new base while the head (and
+    // the green check already attached to it) stays put, so the default
+    // types, which lack `edited`, would let the old target's scan satisfy
+    // the new one. Anything else nested there, a `paths:` filter above all,
+    // breaks the match; the separate no-paths assertion keeps a filter from
+    // riding on any future trigger this block match doesn't cover.
+    expect(workflow).toMatch(
+      /\non:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, edited\]\npermissions:\n/,
+    );
+    expect(workflow).not.toMatch(/^\s*paths:/m);
   });
 });
 

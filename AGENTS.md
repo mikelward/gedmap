@@ -441,11 +441,11 @@ reply, no offer to correct it. It is not a finding.
   commit the PR itself records — not the `origin/main` tip, which another push
   can have moved past it by the time you look. 7-char prefix is fine. Mention
   it once per push.
-- **On every push, update the PR title and body.** Whenever you push to a
-  branch with an open PR, edit its title and description
-  (`mcp__github__update_pull_request`) so they still describe what is on the
-  branch — new commits, reversed decisions, changed scope — and print the PR
-  link in the chat reply for that push, not only at the end of the
+- **Update the PR title and body with the push, not after it.** Pushing to a
+  branch with an open PR and editing its title and description are one step,
+  not two: (`mcp__github__update_pull_request`) so they still describe what is
+  on the branch — new commits, reversed decisions, changed scope — and print
+  the PR link in the chat reply for that push, not only at the end of the
   conversation. A body that listed three bullets goes stale the moment a
   fourth commit lands; fetch the PR's base first — pushing your branch doesn't
   refresh it, and a stale base ref describes changes the PR no longer contains

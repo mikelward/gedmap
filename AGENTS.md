@@ -340,9 +340,11 @@ stopped biting.
 
 ## Branching
 
-- **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR → merge
-  via rebase or squash. One topic per branch. Follow-up work after a merge
-  goes on a new branch. Never commit to `main` / `master`.
+- **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR →
+  rebase-merge. One topic per branch. Follow-up work after a merge goes on a
+  new branch. Never commit to `main` / `master`. Squash merging is disabled on
+  every repository in this fleet, so each commit's own subject is what lands —
+  the PR title never becomes one.
 - **Never open a PR on a commit that already carried one.** The `codex`
   status belongs to the commit, not the PR, and records nothing about which
   PR earned it — so a PR opened on the byte-identical head of a closed one
@@ -352,12 +354,14 @@ stopped biting.
   mikelward/codex-review action) resets the status to `pending` within about
   a minute of the PR opening, but that is an Actions job racing merge
   eligibility, so treat it as the backstop and this rule as the fix.
-- **The PR title carries the same prefix as a commit subject** (see *Commit
-  messages*), judged over the whole branch rather than any one commit, and
-  re-judged on every push — a branch can start documentation-only and stop
-  being so with the next commit. The title is there to be read: it is what the
-  PR list shows the repo owner, so the prefix says at a glance whether a PR
-  changes what the app does.
+- **Give the PR title the same prefix a commit subject would carry** (see
+  *Commit messages*), judged over the whole branch rather than any one commit,
+  and re-judged on every push — a branch can start documentation-only and stop
+  being so with the next commit. This is a convention for reading, not a gate:
+  the title is what the PR list shows the repo owner, so the prefix says at a
+  glance whether a PR changes what the app does. Only commit subjects are
+  enforced (`lint-title no` in `.github/lanes.conf`), because squash merging is
+  disabled and a title therefore never becomes a commit subject.
 - **Use `git worktree` when it's available.** Give each branch its own
   worktree instead of switching branches in place, so work in progress on one
   branch isn't disturbed by work on another.
@@ -436,7 +440,7 @@ reply, no offer to correct it. It is not a finding.
   the operator can tell which build is deployed. Format: `pushed <short-sha>`
   after a push — your branch tip on `origin/<branch>`; `merged at <short-sha>`
   after a merge — the commit the merge produced on `main`, which is *not* your
-  local `HEAD`: a rebase or squash merge leaves the feature branch pointing at
+  local `HEAD`: a rebase merge leaves the feature branch pointing at
   the source commit, so take the SHA the merge API returned, or the merge
   commit the PR itself records — not the `origin/main` tip, which another push
   can have moved past it by the time you look. 7-char prefix is fine. Mention

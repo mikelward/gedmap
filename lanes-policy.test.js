@@ -48,7 +48,8 @@ describe('the lane policy', () => {
     expect(rules).toEqual([
       { verdict: 'code', pattern: 'src/**' },
       { verdict: 'code', pattern: 'public/**' },
-      { verdict: 'docs', pattern: '**/*.md' },
+      { verdict: 'docs', pattern: '*.md' },
+      { verdict: 'docs', pattern: 'docs/**/*.md' },
     ]);
     // The WHOLE directives object, not per-key reads: a newly added directive
     // changes classify/gate behavior, so an unexpected key fails here rather
@@ -56,12 +57,33 @@ describe('the lane policy', () => {
     expect(directives).toEqual({
       prefixes: ['docs', 'todo'],
       'dispatch-without-pr': ['refuse'],
+      'lint-title': ['no'],
     });
   });
 
-  it('classifies markdown outside the shipped trees as docs', () => {
-    for (const path of ['README.md', 'spec.md', 'TODO.md', 'docs/notes.md']) {
+  it('classifies root markdown and the docs/ tree as docs', () => {
+    for (const path of [
+      'README.md',
+      'spec.md',
+      'TODO.md',
+      'docs/notes.md',
+      // `docs/**/*.md` crosses `/`, so the tree rule reaches every depth.
+      // Writing it `docs/*.md` would strand this one on the code lane.
+      'docs/a/b/deep.md',
+    ]) {
       expect(classify(path), path).toBe('docs');
+    }
+  });
+
+  it('does not treat markdown as docs merely for its extension', () => {
+    // The narrowed rules replaced a bare `**/*.md`, which made a markdown
+    // file documentation at ANY depth. Being documentation is now a matter
+    // of where a file lives: the root, or the docs/ tree. Markdown anywhere
+    // else can be a build input, so it stays code. None of these paths
+    // exists today -- that is the point, since the rule has to hold for a
+    // tree nobody has added yet.
+    for (const path of ['scripts/README.md', 'a/b/notes.md', 'notdocs/README.md']) {
+      expect(classify(path), path).toBe('code');
     }
   });
 

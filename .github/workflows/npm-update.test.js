@@ -21,6 +21,16 @@ const caller = read("./npm-update.yml");
 const ci = read("./ci.yml");
 const consumerCheck = read("./codex-review-check.yml");
 
+// The `dispatch-workflows` input, as a list of file names. Accepts the
+// inline form the caller uses today and a block scalar, since either is
+// valid YAML for it and the contract is about the names, not the spelling.
+const dispatchedWorkflows = () => {
+  const inline = caller.match(/^ *dispatch-workflows: *(?![|>])(\S.*)$/m);
+  if (inline) return [inline[1].trim()];
+  const block = caller.match(/^ *dispatch-workflows: *[|>][-+]?\n((?: +\S.*\n)+)/m);
+  return block ? block[1].split("\n").map((l) => l.trim()).filter(Boolean) : [];
+};
+
 describe("npm-update caller", () => {
   it("calls the reusable workflow and grants it what its jobs need", () => {
     expect(caller).toContain(
@@ -29,6 +39,31 @@ describe("npm-update caller", () => {
     expect(caller).toContain("contents: write");
     expect(caller).toContain("pull-requests: write");
     expect(caller).toContain("actions: write");
+  });
+
+  it("names zizmor.yml among the workflows the hub must dispatch", () => {
+    // The batch's PR is opened by GITHUB_TOKEN, which starts no
+    // `on: pull_request` workflow. ci.yml and codex-review-check.yml the hub
+    // dispatches unconditionally; anything else this repository's ruleset
+    // requires -- zizmor, once it is required here -- only runs because it
+    // is named in this input. Dropping the line would leave the weekly PR
+    // pending forever on a check nothing produces, which is not a failure
+    // anyone sees.
+    expect(dispatchedWorkflows()).toContain("zizmor.yml");
+  });
+
+  it("names only workflows that are actually dispatchable", () => {
+    // The other half of the same contract, and the half that fails
+    // silently: `gh workflow run` on a file with no `workflow_dispatch:`
+    // trigger errors, the hub reports it in the PR body and carries on, and
+    // the check still never reports. Derived from the caller rather than
+    // hard-coded, so a workflow added to the input later is covered by this
+    // the day it is added.
+    const named = dispatchedWorkflows();
+    expect(named.length).toBeGreaterThan(0);
+    for (const file of named) {
+      expect(read(`./${file}`)).toMatch(/^\s*workflow_dispatch:/m);
+    }
   });
 
   it("owns the schedule and the manual trigger", () => {

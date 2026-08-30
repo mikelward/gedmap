@@ -64,8 +64,14 @@ describe('zizmor workflow', () => {
     // the new one. Anything else nested there, a `paths:` filter above all,
     // breaks the match; the separate no-paths assertion keeps a filter from
     // riding on any future trigger this block match doesn't cover.
+    //
+    // `workflow_dispatch` is pinned by the same match. The weekly batch's
+    // pull request is opened by `GITHUB_TOKEN`, which starts no
+    // `on: pull_request` workflow, so mikelward/npm-update dispatches this
+    // one by name; deleting the trigger would leave that PR pending forever
+    // on a check nothing can produce, which is not a failure anyone sees.
     expect(workflow).toMatch(
-      /\non:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, edited\]\npermissions:\n/,
+      /\non:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, edited\]\n {2}workflow_dispatch:\npermissions:\n/,
     );
     expect(workflow).not.toMatch(/^\s*paths:/m);
   });

@@ -8,7 +8,12 @@ Client-side React app. Upload a GEDCOM file, see direct ancestors' birthplaces o
 **Deploy:** Vercel (auto-deploy on push, except a docs-only commit — `vercel.json`'s
 `ignoreCommand` runs `scripts/vercel-ignore.mjs`, which reads the same
 `.github/lanes.conf` the docs lane reads and cancels the build when every changed
-path is documentation)
+path is documentation. It skips only while it can measure the range — the last
+successful deployment of this project and branch against the commit being
+deployed — and otherwise fails open and builds: a first deployment has no
+earlier one to measure against, and a previous SHA far enough back falls outside
+Vercel's shallow clone. `scripts/vercel-ignore.mjs` names each case, and the
+build log says which one it hit)
 
 ---
 

@@ -94,12 +94,35 @@ describe('zizmor policy', () => {
     ]);
   });
 
+  // The `ignore:` file list under one rule, read from that rule's own block
+  // so one rule's list cannot satisfy another's assertion. stripComments
+  // leaves a comment line blank rather than dropping it, so the block runs
+  // over blank lines and ends at the next two-space key.
+  const ignoredUnder = (rule) => {
+    const block = stripComments(policy).match(
+      new RegExp(`^ {2}${rule}:\\n((?:(?: {4,}.*)?\\n)+)`, 'm'),
+    );
+    expect(block).not.toBeNull();
+    return [...block[1].matchAll(/^ +- (\S+)$/gm)].map((m) => m[1]);
+  };
+
   it("excuses this repository's own privileged triggers, nothing else", () => {
     // codex-review.yml and codex-review-check.yml both carry
     // pull_request_target deliberately and neither checks out or executes
     // pull request code with the elevated token. Compared whole, so a new
     // workflow reaching for pull_request_target is still flagged.
-    const ignored = [...policy.matchAll(/^ +- (\S+)$/gm)].map((m) => m[1]);
-    expect(ignored).toEqual(['codex-review.yml', 'codex-review-check.yml']);
+    expect(ignoredUnder('dangerous-triggers')).toEqual([
+      'codex-review.yml',
+      'codex-review-check.yml',
+    ]);
+  });
+
+  it('lets only the batch caller inherit secrets', () => {
+    // npm-update.yml passes `secrets: inherit` on purpose: the hub's publish
+    // job reads NPM_UPDATE_PAT from this repository's `npm-update`
+    // environment, and an environment secret reaches a called workflow no
+    // other way. Compared whole, so a second workflow handing every secret
+    // to a called workflow is still flagged.
+    expect(ignoredUnder('secrets-inherit')).toEqual(['npm-update.yml']);
   });
 });

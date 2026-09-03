@@ -113,3 +113,91 @@ pull request that installed these files.
   `npm-update.test.js`'s ci.yml/npm-update.yml parity check too — work out
   the details (regex classification, pinning, exact command match) when
   actually building this, not here.
+
+## Launch readiness (measurement, cost, overload)
+
+gedmap has a natural audience it has never been shown to — genealogy
+communities are large, underserved by good tooling, and full of hobbyists who
+already pay for software. The blockers below are all things that would make a
+successful post *worse* than no post: an app that looks broken to everyone who
+arrives after a quota cap, with no instrumentation to say what happened.
+
+Business-model reasoning (one-off vs. subscription, BYOK, price anchors) is in
+`readmo/MONETIZATION.md` — this section is the engineering that is needed
+whether or not anything is ever charged for.
+
+### Measurement — nothing exists today
+
+gedmap measures **nothing**: no analytics dependency, no backend, no accounts.
+It is the only web product flying completely blind.
+
+- [ ] **Cost and reliability of `@vercel/analytics`** (AGENTS.md requires this
+      before recommending an external call, and the item below didn't have it):
+      - **Cost — effectively zero at any plausible gedmap volume.** Vercel Web
+        Analytics is included on the Pro plan this project already pays for,
+        with an included monthly event allowance and usage-based pricing above
+        it. Confirm the current included figure before launch rather than
+        trusting this line; at three users it is not close, and even a Show HN
+        day is a rounding error against it. Custom events count toward the same
+        allowance, which is the argument for bucketing values rather than
+        emitting one event per distinct number.
+      - **Reliability — no user-facing failure mode.** It is a client-side
+        script that fires and forgets: blocked by ad blockers and privacy
+        browsers (so treat every count as a floor, not a census), and silently
+        absent when Vercel is down. Nothing in gedmap reads it back, so an
+        outage costs a gap in the data and nothing else. No added latency on
+        any path the user waits for.
+- [ ] Add `@vercel/analytics` and a handful of real events: file uploaded,
+      ancestors parsed (bucketed count), geocode run completed (bucketed
+      counts of mapped / failed / unavailable), map interacted with. Bucket
+      values so the breakdown UI stays readable (newshacker's
+      `src/lib/analytics.ts` `bucket20` is the precedent).
+- [ ] **Never send a place name, an ancestor name, or anything else off a
+      GEDCOM** — see AGENTS.md *Privacy*. Counts and buckets only. This is the
+      one place analytics could quietly become a PII leak, so assert it in a
+      test rather than trusting review.
+- [ ] Capture a baseline **before** any community post. Instrumenting after a
+      launch says nothing about what changed.
+
+### Cost ceilings and quota exhaustion
+
+- [x] Distinguish "geocoder unavailable" from "place not found" so a 429 stops
+      reading as a file full of missing places (`spec.md` §Unmapped Ancestors).
+- [ ] **Persist the geocode cache.** It is currently a module-level `Map` in
+      `src/utils/geocode.ts` — in-memory, per page load, gone on refresh. Every
+      visitor re-geocodes every place from scratch, so repeat sessions cost
+      full price. HERE's free tier is 250k requests/month; at a few hundred
+      distinct places per file that is roughly 500 sessions before the ceiling.
+      A post that does well brings that in an afternoon. Persisting to
+      localStorage/IndexedDB takes repeat visits to ~zero API calls and is the
+      single highest-value cost fix here.
+      - Cache successes and confirmed no-matches; **never** cache an
+        unavailable — a 429 must not poison a place for later sessions.
+      - Bound the entry count and version the key so a shape change can't
+        strand a stale cache.
+      - Places are GEDCOM data, so this is device-local storage only. It never
+        syncs anywhere.
+- [ ] **Check Mapbox's exposure too.** The geocoder is not the only metered
+      dependency — Mapbox GL JS bills per map load beyond its free allowance,
+      and a traffic spike hits it on the same day. Confirm the current
+      threshold and what happens when it is crossed (does the map fail
+      visibly, or silently render nothing?).
+- [ ] **Set billing alerts on both HERE and Mapbox** at a fraction of the free
+      tier, so the first warning is an email rather than a broken app or a
+      bill. There is no server here to notice on your behalf.
+- [ ] Consider **BYOK for the HERE key** (clothescast does this for Gemini). No
+      revenue, but it removes gedmap from the cost line entirely and makes
+      one-off pricing safe — see `readmo/MONETIZATION.md`.
+
+### Monitoring and alerting
+
+gedmap is fully client-side, so there is no server to monitor and nothing to
+page. What is missing is the ability to know a bad deploy happened at all.
+
+- [ ] Decide whether client-side error reporting is worth it, and be explicit
+      that it is a **Data Safety / privacy decision, not an implementation
+      detail** — an unfiltered stack trace or breadcrumb can carry a place
+      name. If adopted, the same floor as the analytics item applies, plus a
+      scrub of any message that could quote a GEDCOM value.
+- [ ] Until then, note plainly that a runtime error after deploy is invisible
+      unless a user reports it.

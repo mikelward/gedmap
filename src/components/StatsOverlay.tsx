@@ -1,5 +1,17 @@
 import { useState } from 'react'
 import type { AncestorEntry, GeocodedAncestor, UnmappedAncestors } from '../types'
+import type { GeocoderUnavailableReason } from '../utils/geocode'
+
+// Why the geocoder went quiet, in the user's terms. Each says whether the
+// ancestors below would map on a later run — that's the whole difference
+// between this bucket and the two permanent ones.
+const UNAVAILABLE_NOTE: Record<GeocoderUnavailableReason, string> = {
+  quota: 'Lookup limit reached \u2014 try again later.',
+  'rate-limited': 'Too many lookups at once \u2014 try again shortly.',
+  auth: 'Geocoder key rejected.',
+  network: "Couldn't reach the geocoder \u2014 try again later.",
+  unconfigured: 'No geocoder key configured.',
+}
 
 interface StatsOverlayProps {
   ancestors: GeocodedAncestor[]
@@ -11,8 +23,8 @@ interface StatsOverlayProps {
 export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, sidebarOpen }: StatsOverlayProps) {
   const [showUnmapped, setShowUnmapped] = useState(false)
   const countries = new Set(ancestors.map((a) => a.country))
-  const { noPlace = [], geocodeFailed = [] } = unmapped
-  const totalUnmapped = noPlace.length + geocodeFailed.length
+  const { noPlace = [], geocodeFailed = [], geocodeUnavailable = [], unavailableReason } = unmapped
+  const totalUnmapped = noPlace.length + geocodeFailed.length + geocodeUnavailable.length
 
   return (
     <div className={`absolute top-4 right-4 z-10 flex items-start justify-between pointer-events-none transition-[left] duration-300 ${sidebarOpen ? 'left-[304px]' : 'left-16'}`}>
@@ -29,8 +41,35 @@ export default function StatsOverlay({ ancestors, unmapped, onSelectUnmapped, si
             >
               {totalUnmapped} not mapped {showUnmapped ? '▲' : '▼'}
             </button>
+            {geocodeUnavailable.length > 0 && (
+              <p className="text-xs mt-1 text-amber-600 dark:text-amber-400">
+                {UNAVAILABLE_NOTE[unavailableReason ?? 'network']}
+              </p>
+            )}
             {showUnmapped && (
               <div className="mt-2 max-h-48 overflow-y-auto space-y-3">
+                {geocodeUnavailable.length > 0 && (
+                  <div>
+                    <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                      Not looked up
+                    </h4>
+                    <ul className="space-y-0.5">
+                      {geocodeUnavailable.map((a) => (
+                        <li key={a.id}>
+                          <button
+                            onClick={() => onSelectUnmapped(a)}
+                            className="text-xs text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors text-left"
+                          >
+                            {a.name}
+                          </button>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-600 ml-1">
+                            {a.birthPlace}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {noPlace.length > 0 && (
                   <div>
                     <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">

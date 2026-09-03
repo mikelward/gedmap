@@ -35,15 +35,18 @@ export default function AncestorSidebar({ ancestors, unmapped, onSelect, selecte
   const [search, setSearch] = useState('')
   const setOpen = onOpenChange
 
-  const { noPlace = [], geocodeFailed = [] } = unmapped
+  const { noPlace = [], geocodeFailed = [], geocodeUnavailable = [] } = unmapped
   const allAncestors = useMemo<SidebarItem[]>(() => {
     const mapped: SidebarItem[] = ancestors.map((a) => ({ ...a, _mapped: true }))
     const notMapped: SidebarItem[] = [
       ...noPlace.map((a): SidebarItem => ({ ...a, _mapped: false, _reason: 'No birth place' })),
       ...geocodeFailed.map((a): SidebarItem => ({ ...a, _mapped: false, _reason: 'Not found' })),
+      // Before the three-way split these were in geocodeFailed, so omitting
+      // them here would drop them out of the sidebar entirely.
+      ...geocodeUnavailable.map((a): SidebarItem => ({ ...a, _mapped: false, _reason: 'Not looked up' })),
     ]
     return [...mapped, ...notMapped]
-  }, [ancestors, noPlace, geocodeFailed])
+  }, [ancestors, noPlace, geocodeFailed, geocodeUnavailable])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return allAncestors

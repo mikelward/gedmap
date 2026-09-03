@@ -1,3 +1,5 @@
+import type { GeocoderUnavailableReason } from './utils/geocode'
+
 // Domain types shared between the GEDCOM parser, the geocoder, and the UI.
 // Centralized here rather than inferred per-module so a shape change (e.g.
 // adding a field to an ancestor entry) is a one-file edit.
@@ -70,10 +72,21 @@ export interface GeocodedAncestor extends AncestorEntry {
   country: string
 }
 
-/** What's left un-plotted after geocoding: no place in the file, or lookup failed. */
+/**
+ * What's left un-plotted after geocoding, split by WHY — the three are not
+ * interchangeable to a reader trying to work out whether their file is
+ * incomplete or the app is:
+ *   - `noPlace`     — the GEDCOM records no birth place. The file's gap.
+ *   - `geocodeFailed` — we looked; the place didn't resolve. The place's gap.
+ *   - `geocodeUnavailable` — we never looked, because the geocoder couldn't
+ *     answer (quota, bad key, network). Ours, and temporary — these would map
+ *     on a later run, which is exactly what the other two never do.
+ */
 export interface UnmappedAncestors {
   noPlace: AncestorEntry[]
   geocodeFailed: AncestorEntry[]
+  geocodeUnavailable: AncestorEntry[]
+  unavailableReason?: GeocoderUnavailableReason
 }
 
 /**

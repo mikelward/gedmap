@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
 import MapView from './MapView'
 import { ThemeProvider } from '../ThemeContext'
@@ -60,7 +60,7 @@ function renderMapView(props: Partial<ComponentProps<typeof MapView>> = {}) {
     <ThemeProvider>
       <MapView
         ancestors={[ROOT_ANCESTOR]}
-        unmapped={{ noPlace: [UNMAPPED_PARENT], geocodeFailed: [] }}
+        unmapped={{ noPlace: [UNMAPPED_PARENT], geocodeFailed: [], geocodeUnavailable: [] }}
         onViewAs={() => {}}
         onViewAll={() => {}}
         {...props}
@@ -106,6 +106,37 @@ describe('MapView', () => {
     fireEvent.click(parentLinks[0])
 
     // The popup should now show the unmapped parent as h2 heading
+    const headings = screen.getAllByText('Unmapped Parent')
+    expect(headings.some((el) => el.tagName === 'H2')).toBe(true)
+  })
+
+  // The parent-navigation test above puts its target in `noPlace`, so it stays
+  // green even with `geocodeUnavailable` removed from `ancestorLookup` — which
+  // is exactly the navigation regression that addition fixes. Pin it here with
+  // the parent in that bucket and nowhere else.
+  it('navigates to a parent whose lookup never ran', () => {
+    renderMapView({
+      unmapped: { noPlace: [], geocodeFailed: [], geocodeUnavailable: [UNMAPPED_PARENT] },
+    })
+    fireEvent.click(screen.getByText('Root Person'))
+
+    // Scope to the popup. The sidebar renders both a "Parents" heading and the
+    // same name, so neither is unique — and its click path
+    // (handleSelectFromList) passes the whole object, never consulting
+    // ancestorLookup, so clicking that one would pass either way. Climb from
+    // the popup's own <h2> to the nearest container holding its parent link.
+    let popup = screen.getAllByText('Root Person').find((el) => el.tagName === 'H2') as
+      | HTMLElement
+      | null
+      | undefined
+    while (popup && !within(popup).queryByRole('button', { name: 'Unmapped Parent' })) {
+      popup = popup.parentElement
+    }
+    expect(popup).toBeTruthy()
+    fireEvent.click(within(popup!).getByRole('button', { name: 'Unmapped Parent' }))
+
+    // handleNavigate resolves the id through ancestorLookup and bails on a
+    // miss, so without the geocodeUnavailable entry the popup never changes.
     const headings = screen.getAllByText('Unmapped Parent')
     expect(headings.some((el) => el.tagName === 'H2')).toBe(true)
   })

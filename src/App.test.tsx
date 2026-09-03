@@ -36,7 +36,7 @@ describe('App', () => {
   })
 
   it('walks upload → pick → map', async () => {
-    mockedGeocodeAncestors.mockResolvedValue({ geocoded: [], geocodeFailed: [] })
+    mockedGeocodeAncestors.mockResolvedValue({ geocoded: [], geocodeFailed: [], geocodeUnavailable: [] })
     const { container } = render(<App />)
 
     uploadGedcom(container)
@@ -59,7 +59,7 @@ describe('App', () => {
   it('does not show a stale error in the picker after a successful retry', async () => {
     mockedGeocodeAncestors
       .mockRejectedValueOnce(new Error('network down'))
-      .mockResolvedValue({ geocoded: [], geocodeFailed: [] })
+      .mockResolvedValue({ geocoded: [], geocodeFailed: [], geocodeUnavailable: [] })
     const { container } = render(<App />)
 
     uploadGedcom(container)

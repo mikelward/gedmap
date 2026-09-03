@@ -14,7 +14,7 @@ describe('StatsOverlay', () => {
     render(
       <StatsOverlay
         ancestors={ANCESTORS}
-        unmapped={{ noPlace: [], geocodeFailed: [] }}
+        unmapped={{ noPlace: [], geocodeFailed: [], geocodeUnavailable: [] }}
         onSelectUnmapped={() => {}}
         sidebarOpen={false}
       />
@@ -27,7 +27,7 @@ describe('StatsOverlay', () => {
     render(
       <StatsOverlay
         ancestors={[makeGeocodedAncestor({ id: '1', name: 'A', lat: 0, lng: 0, country: 'UK' })]}
-        unmapped={{ noPlace: [], geocodeFailed: [] }}
+        unmapped={{ noPlace: [], geocodeFailed: [], geocodeUnavailable: [] }}
         onSelectUnmapped={() => {}}
         sidebarOpen={false}
       />
@@ -43,7 +43,7 @@ describe('StatsOverlay', () => {
     render(
       <StatsOverlay
         ancestors={ANCESTORS}
-        unmapped={{ noPlace, geocodeFailed }}
+        unmapped={{ noPlace, geocodeFailed, geocodeUnavailable: [] }}
         onSelectUnmapped={() => {}}
         sidebarOpen={false}
       />
@@ -64,7 +64,7 @@ describe('StatsOverlay', () => {
     render(
       <StatsOverlay
         ancestors={ANCESTORS}
-        unmapped={{ noPlace: [], geocodeFailed: [] }}
+        unmapped={{ noPlace: [], geocodeFailed: [], geocodeUnavailable: [] }}
         onSelectUnmapped={() => {}}
         sidebarOpen={false}
       />
@@ -79,7 +79,7 @@ describe('StatsOverlay', () => {
     render(
       <StatsOverlay
         ancestors={ANCESTORS}
-        unmapped={{ noPlace, geocodeFailed: [] }}
+        unmapped={{ noPlace, geocodeFailed: [], geocodeUnavailable: [] }}
         onSelectUnmapped={handler}
         sidebarOpen={false}
       />
@@ -88,5 +88,38 @@ describe('StatsOverlay', () => {
     fireEvent.click(screen.getByText(/1 not mapped/))
     fireEvent.click(screen.getByText('Unique Dave'))
     expect(handler).toHaveBeenCalledWith(noPlace[0])
+  })
+
+  // A rate-limited run must not read as a file full of missing places — the
+  // whole point of the third bucket is that these ancestors WOULD map later.
+  it('names the reason when the geocoder was unavailable', () => {
+    const geocodeUnavailable = [
+      makeAncestorEntry({ id: '9', name: 'Unlooked Person', birthPlace: 'Somewhere' }),
+    ]
+    render(
+      <StatsOverlay
+        ancestors={ANCESTORS}
+        unmapped={{ noPlace: [], geocodeFailed: [], geocodeUnavailable, unavailableReason: 'quota' }}
+        onSelectUnmapped={() => {}}
+        sidebarOpen={false}
+      />
+    )
+
+    expect(screen.getByText(/Lookup limit reached/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/1 not mapped/))
+    expect(screen.getByText('Not looked up')).toBeInTheDocument()
+    expect(screen.getByText('Unlooked Person')).toBeInTheDocument()
+  })
+
+  it('says nothing about availability when every lookup ran', () => {
+    render(
+      <StatsOverlay
+        ancestors={ANCESTORS}
+        unmapped={{ noPlace: [], geocodeFailed: [], geocodeUnavailable: [] }}
+        onSelectUnmapped={() => {}}
+        sidebarOpen={false}
+      />
+    )
+    expect(screen.queryByText(/Lookup limit reached/)).not.toBeInTheDocument()
   })
 })

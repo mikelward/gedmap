@@ -14,6 +14,7 @@ const ANCESTORS = [
 const UNMAPPED = {
   noPlace: [makeAncestorEntry({ id: '5', name: 'No Place Person', generation: 2 })],
   geocodeFailed: [makeAncestorEntry({ id: '6', name: 'Failed Person', generation: 2, birthPlace: 'Nowhere' })],
+  geocodeUnavailable: [],
 }
 
 function renderSidebar(props: Partial<ComponentProps<typeof AncestorSidebar>> = {}) {
@@ -122,7 +123,7 @@ describe('AncestorSidebar', () => {
         makeGeocodedAncestor({ id: '1', name: 'Someone', generation: null, relationship: null, birthPlace: 'Sydney', lat: -33.8, lng: 151.2, country: 'Australia' }),
         makeGeocodedAncestor({ id: '2', name: 'Someone Else', generation: null, relationship: null, birthPlace: 'Perth', lat: -31.9, lng: 115.8, country: 'Australia' }),
       ],
-      unmapped: { noPlace: [], geocodeFailed: [] },
+      unmapped: { noPlace: [], geocodeFailed: [], geocodeUnavailable: [] },
     })
     expect(screen.queryByText('Self')).not.toBeInTheDocument()
     expect(screen.getByText('Someone')).toBeInTheDocument()
@@ -141,5 +142,19 @@ describe('AncestorSidebar', () => {
 
     fireEvent.click(screen.getByText('View all'))
     expect(handler).toHaveBeenCalled()
+  })
+
+  // Before the three-way split these sat in geocodeFailed, so a sidebar built
+  // from only two buckets drops them out of the list entirely.
+  it('lists ancestors whose lookup never ran', () => {
+    renderSidebar({
+      unmapped: {
+        ...UNMAPPED,
+        geocodeUnavailable: [
+          makeAncestorEntry({ id: '7', name: 'Unlooked Person', generation: 2, birthPlace: 'Somewhere' }),
+        ],
+      },
+    })
+    expect(screen.getByText('Unlooked Person')).toBeInTheDocument()
   })
 })

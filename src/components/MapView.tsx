@@ -137,8 +137,10 @@ export default function MapView({ ancestors, unmapped, onViewAs, onViewAll }: Ma
   const ancestorLookup = useMemo(() => {
     const lookup = new Map<string, MaybeGeocoded>()
     ancestors.forEach((a) => lookup.set(a.id, a))
-    const { noPlace = [], geocodeFailed = [] } = unmapped
-    for (const a of [...noPlace, ...geocodeFailed]) {
+    const { noPlace = [], geocodeFailed = [], geocodeUnavailable = [] } = unmapped
+    // All three unmapped buckets belong here: the lookup backs parent/child
+    // navigation, so omitting one makes those links no-ops for its members.
+    for (const a of [...noPlace, ...geocodeFailed, ...geocodeUnavailable]) {
       lookup.set(a.id, a)
     }
     return lookup

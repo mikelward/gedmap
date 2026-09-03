@@ -172,12 +172,41 @@ Sequential (one at a time), not parallel. Simpler and enables smooth progress up
 
 ### Unmapped Ancestors
 
-Two reasons an ancestor may not appear on the map:
+Three reasons an ancestor may not appear on the map, kept apart because they
+mean different things to someone deciding whether their *file* is incomplete or
+the *app* is:
+
 1. **No birth place in GEDCOM** — detected during parsing, reason: "No birth place in file"
 2. **Geocoding failed** — has a place string but the geocoder couldn't resolve it, reason: `Could not locate "place name"`
+3. **Not looked up** — the geocoder couldn't answer at all (quota exhausted,
+   rate limited, key rejected, network). Unlike the first two, these ancestors
+   *would* map on a later run, so the overlay says so rather than listing them
+   as missing.
 
-Both are tracked with full ancestor data. The stats overlay shows "X not mapped ▼" — expanding it reveals two grouped lists:
+Reason 3 exists because HERE's free tier is 250k requests/month and an exhausted
+quota answers `429`. Reporting that as "location not found" made a rate-limited
+session indistinguishable from a file full of unresolvable places — the app
+looked broken to everyone who arrived after the cap, with nothing to say it was
+temporary. So the geocoder now distinguishes *"we looked and missed"* from
+*"we never looked"*, and stops spending requests once a terminal failure
+(auth, no key) makes the rest of the batch pointless.
 
+**A 429 is not by itself terminal, because HERE says two different things with
+it**: a spent monthly allowance, and merely out-running its short-term request
+rate — and one response can't tell them apart. Since lookups run concurrently,
+treating every 429 as terminal let a single burst stop a whole tree and report
+the month's allowance as gone. So a 429 is retried once, and the *batch* decides
+from evidence: several retried 429s with no lookup getting through in between is
+an exhausted allowance and latches; anything less is a burst, and the run
+continues. The design bias is deliberate — over-reading a burst costs the user
+most of their map, while under-reading an exhausted quota costs a few rejected
+requests.
+
+All three are tracked with full ancestor data. The stats overlay shows
+"X not mapped ▼", plus a one-line note naming the reason when any lookups
+didn't run — expanding it reveals the grouped lists:
+
+- **Not looked up** — names + place string, with the reason shown above the list
 - **No birth place in file** — names of ancestors with no PLAC under BIRT
 - **Location not found** — names + the place string that failed geocoding
 
@@ -234,7 +263,7 @@ Left-side panel (280px wide) listing all ancestors — both mapped and unmapped.
 - **Grouped by generation** — sticky headers: Self, Parents, Grandparents, Great-grandparents, Great-great-grandparents
 - **Clickable names** — mapped ancestors fly the map to their pin + open detail card; unmapped ancestors just open the detail card
 - **Selected state** — currently selected ancestor is highlighted
-- **Unmapped indicators** — "No birth place" or "Not found" shown in gray next to unmapped names
+- **Unmapped indicators** — "No birth place", "Not found", or "Not looked up" shown in gray next to unmapped names
 - **Collapsible** — X button hides the panel, hamburger button re-opens it
 - **Footer** — shows "X of Y ancestors" count (reflects search filter)
 

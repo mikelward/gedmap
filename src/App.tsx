@@ -13,7 +13,7 @@ function App() {
   const [state, setState] = useState<AppState>('upload')
   const [ancestors, setAncestors] = useState<GeocodedAncestor[]>([])
   const [geocodeProgress, setGeocodeProgress] = useState({ done: 0, total: 0 })
-  const [unmapped, setUnmapped] = useState<UnmappedAncestors>({ noPlace: [], geocodeFailed: [] })
+  const [unmapped, setUnmapped] = useState<UnmappedAncestors>({ noPlace: [], geocodeFailed: [], geocodeUnavailable: [] })
   const [error, setError] = useState<string | null>(null)
 
   // Parsed file data, kept so the user can switch anchor person
@@ -33,12 +33,12 @@ function App() {
     setState('loading')
     setGeocodeProgress({ done: 0, total: withPlace.length })
 
-    const { geocoded, geocodeFailed } = await geocodeAncestors(withPlace, (done) => {
+    const { geocoded, geocodeFailed, geocodeUnavailable, unavailableReason } = await geocodeAncestors(withPlace, (done) => {
       setGeocodeProgress((prev) => ({ ...prev, done }))
     })
 
     setAncestors(geocoded)
-    setUnmapped({ noPlace, geocodeFailed })
+    setUnmapped({ noPlace, geocodeFailed, geocodeUnavailable, unavailableReason })
     setState('map')
   }, [])
 
@@ -89,12 +89,12 @@ function App() {
       setState('loading')
       setGeocodeProgress({ done: 0, total: withPlace.length })
 
-      const { geocoded, geocodeFailed } = await geocodeAncestors(withPlace, (done) => {
+      const { geocoded, geocodeFailed, geocodeUnavailable, unavailableReason } = await geocodeAncestors(withPlace, (done) => {
         setGeocodeProgress((prev) => ({ ...prev, done }))
       })
 
       setAncestors(geocoded)
-      setUnmapped({ noPlace, geocodeFailed })
+      setUnmapped({ noPlace, geocodeFailed, geocodeUnavailable, unavailableReason })
       setState('map')
     } catch (err) {
       console.error('Failed to load all people:', err)

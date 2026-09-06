@@ -449,7 +449,7 @@ reply, no offer to correct it. It is not a finding.
   commit the PR itself records — not the `origin/main` tip, which another push
   can have moved past it by the time you look. 7-char prefix is fine. Mention
   it once per push.
-- **Update the PR title and body with the push, not after it.** Pushing to a
+- **Update the PR title and body with the push — body first, then push.** Pushing to a
   branch with an open PR and editing its title and description are one step,
   not two: (`mcp__github__update_pull_request`) so they still describe what is
   on the branch — new commits, reversed decisions, changed scope — and print

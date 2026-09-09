@@ -1,0 +1,47 @@
+name: npm update
+
+# The thin caller for mikelward/npm-update's reusable workflow — see that
+# repo's README.md for the wiring contract. This repo owns the schedule and
+# the manual trigger, and grants the permissions the reusable workflow's jobs
+# need (its own top-level permissions are empty by design; each job declares
+# only what it needs, capped by what's granted here).
+
+on:
+  schedule:
+    # 06:17 UTC on Saturdays. Actions cron is best-effort and can be delayed by
+    # tens of minutes under load, which is fine for a weekly chore — and the
+    # off-the-hour minute is deliberate, since the top of the hour is the most
+    # congested slot on the shared scheduler and the most likely to be delayed.
+    - cron: '17 6 * * 6'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  npm-update:
+    uses: mikelward/npm-update/.github/workflows/npm-update.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    with:
+      # The batch's PR is opened by GITHUB_TOKEN, which starts no
+      # `on: pull_request` workflow, so every check its ruleset requires has
+      # to be dispatched by hand. ci.yml and codex-review-check.yml the hub
+      # always dispatches; zizmor.yml is this repository's own and has to be
+      # named here.
+      dispatch-workflows: zizmor.yml
+    # `inherit`, not a `secrets:` block naming NPM_UPDATE_PAT: the publish
+    # job reads the credential from this repository's `npm-update`
+    # environment, and an environment secret reaches a called workflow no
+    # other way. A secret passed by name reaches the runner of every job in
+    # the called workflow, the untrusted update job included, which is what
+    # this replaces — see that repository's README. The credential opens the
+    # batch PR as a real collaborator rather than as `GITHUB_TOKEN`, so the
+    # ordinary `pull_request` round runs for it — every check the ruleset
+    # requires, including ones added after this line was written, rather
+    # than only the names `dispatch-workflows` above happens to list; that
+    # input stays as the fallback. The corresponding zizmor finding
+    # (secrets-inherit) is allowed for this file in .github/zizmor.yml, with
+    # the same reason.
+    secrets: inherit

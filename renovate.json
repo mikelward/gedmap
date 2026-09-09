@@ -1,0 +1,121 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "enabled": false,
+  "timezone": "UTC",
+  "description": [
+    "RENOVATE IS DISABLED FOR THIS REPO. `enabled: false` is the master switch: Renovate still runs a job, logs 'Repository is disabled', and creates nothing — no PRs, no renovate/* branches, no dependency dashboard, and no vulnerability-alert PRs either, since a disabled repo is skipped before alerts are even considered. Everything below is dormant and kept intact on purpose, so re-enabling is deleting one key rather than rebuilding a config that took several rounds to get right. Security coverage does not go dark with it: GitHub's own Dependabot security updates are a separate switch in repo settings and are unaffected. To stop the Mend app running jobs at all, uninstall it at developer.mend.io — this file only tells a job that does run to do nothing.",
+    "Renovate is eligible to run at any time. Update volume is paced by the per-update-type minimumReleaseAge cooldowns and prConcurrentLimit below, not by a weekly window — a window only delays PRs that have already cooled down, and it never applies to vulnerability alerts (Renovate forces schedule: [] and prCreation: immediate on those).",
+    "mode=full is stated explicitly because the Mend-hosted app defaults an 'All repositories' install to silent mode, in which Renovate opens no PRs and no dependency dashboard issue — indistinguishable from 'nothing needs updating'. The Mend-side setting is injected via RENOVATE_CONFIG and wins over this file, so if PRs still never appear the remaining switch is developer.mend.io → repo/org → Interactive, not here.",
+    "The npm constraint below is load-bearing, not decoration. The .npmrc min-release-age window is only enforced by the npm that does the resolving, and for lock file maintenance that npm is Renovate's, not ours. npm added the option in 11.10.0 and silently ignores it before that ('Unknown project config'), so without this constraint the one path the window exists to cover could still regenerate the lockfile with an npm that has never heard of it — the same silent no-op the rest of this config is built to avoid. Renovate also infers constraints from engines.npm; stating it here as well keeps it true if engines is ever relaxed."
+  ],
+  "mode": "full",
+  "schedule": ["at any time"],
+  "assignees": ["mikelward"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  },
+  "platformAutomerge": true,
+  "constraints": {
+    "npm": ">=11.10.0"
+  },
+  "packageRules": [
+    {
+      "description": "The npm floor is not a dependency to keep current — it names the release that introduced `min-release-age` (11.10.0), and nothing above that buys anything. Adding `constraints.npm` made Renovate treat it as one: within minutes of that landing it opened `>=11.18.0` (a MINOR, so auto-merge eligible) and `v12`. Both floors sit above the npm Node 24 actually bundles (24.18.1 ships 11.16.0), so merging one would EBADENGINE every contributor, CI runner and Vercel build — and the lower-bound guard in renovate.test would not have caught it, because a floor that is too HIGH still clears a >= assertion. Raise this by hand only if a later npm becomes genuinely required, and check what the pinned Node major bundles before you do.",
+      "matchDepNames": ["npm"],
+      "enabled": false
+    },
+    {
+      "description": "Cooldown before an update is offered.",
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "minimumReleaseAge": "5 days"
+    },
+    {
+      "description": "Auto-merge every patch and minor once CI is green; majors always wait for review. Pre-1.0 (0.x) packages are excluded — SemVer permits breaking changes in a 0.x minor, so they still open a PR for review.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Lock file maintenance auto-merges too, but as its own rule: a lockFileMaintenance branch refreshes the whole lockfile and has no single dependency behind it, so it has no current version for matchCurrentVersion to test. Folded into the rule above it would silently never match, and those PRs would pile up unmerged.",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Grouping keeps peer-related packages in one PR.",
+      "groupName": "eslint",
+      "matchPackageNames": [
+        "eslint",
+        "eslint-**",
+        "@eslint/**",
+        "@eslint-community/**",
+        "typescript-eslint"
+      ]
+    },
+    {
+      "groupName": "testing",
+      "matchPackageNames": [
+        "@testing-library/**",
+        "vitest",
+        "@vitest/**",
+        "jsdom"
+      ]
+    },
+    {
+      "groupName": "tailwind",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**"]
+    },
+    {
+      "groupName": "vite",
+      "matchPackageNames": ["vite", "@vitejs/**", "vite-plugin-**"]
+    },
+    {
+      "groupName": "react",
+      "matchPackageNames": ["react", "react-dom", "react-router-dom"]
+    },
+    {
+      "groupName": "mapbox",
+      "matchPackageNames": ["mapbox-gl", "react-map-gl"]
+    },
+    {
+      "groupName": "types",
+      "matchPackageNames": ["@types/**"]
+    },
+    {
+      "description": "The Node runtime is pinned by MAJOR on purpose: `.nvmrc` holds the bare `24` so CI, `nvm use`, and the session-start hook each resolve the newest release of that major on their own, and nodeVersion.test.js asserts that exact string. Renovate's nvm manager can only write a full version, so every 'Update Node.js to v24.x.y' PR rewrites .nvmrc to `24.18.1`, fails CI, and reopens the next time a patch ships — three repos' worth of unmergeable PRs for an upgrade that already happens at runtime without a commit. Patches/minors are therefore off entirely.",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "enabled": false
+    },
+    {
+      "description": "A Node MAJOR is a runtime migration, not a dependency update — .nvmrc and engines.node move in one commit (see CLAUDE.md 'Node version'). Renovate can't do that, so it must not open the PR unprompted; dependencyDashboardApproval keeps the new major visible on the dashboard, and checking that box is the deliberate 'I am doing the migration now' signal. Expect to fix .nvmrc back to the bare major by hand in that branch.",
+      "matchDepNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "GitHub Actions get their own group. No minimumReleaseAge here on purpose: the per-update-type cooldowns above already apply to every manager, and repeating one here would override the 14-day major cooldown with 7 days for actions majors (later rules win on scalar fields).",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    }
+  ]
+}

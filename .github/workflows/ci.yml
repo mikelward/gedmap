@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # No paths filter, deliberately: one would be a second copy of
+    # .github/lanes.conf written in another language and verified by nothing.
+    # `push classify` in that file decides the same question from the policy
+    # itself, and the heavy job is already gated on `docs_only`, so a
+    # docs-only push to main starts a run and skips everything in it rather
+    # than never starting one.
+    #
+    # The engine refuses the range rather than guessing whenever it cannot
+    # prove the push added it — a force-push, a first push, a branch deletion,
+    # a comparison that is not `ahead`, or a file list at the API's 300-file
+    # page cap. Every refusal takes the code lane.
+  pull_request:
+    # `edited` is here because a retarget changes what the PR's diff is
+    # measured against while the head — and any `gate` check run already
+    # minted on it — stays put, so a base change must start a fresh run.
+    # Title and body edits re-run the lane too, deliberately: a skipped
+    # job would be worse, because GitHub counts a skipped required check
+    # as satisfied, so skipping the gate on a "harmless" edit would let a
+    # newer skipped run replace a red verdict on the same head.
+    types: [opened, synchronize, reopened, edited]
+  # The weekly dependency PR is opened by `GITHUB_TOKEN`, and GitHub does not
+  # let a `GITHUB_TOKEN`-created event start a workflow — so `pull_request`
+  # never fires for it. `workflow_dispatch` is the documented exception, and
+  # `npm-update.yml` dispatches this workflow against the branch it
+  # pushes — naming the PR it opened first, because the docs lane refuses a
+  # dispatched run that names no PR (a verdict computed for one pull request
+  # must not label another's commit). Removing this leaves that PR with no
+  # CI and nothing to say so.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: >-
+          Pull request number this run reports for. Classification and the
+          prefix lint come from it, and the docs lane verifies the named
+          PR heads the dispatched commit.
+        required: true
+
+# CI only builds and tests — it never writes to the repository, so it runs with
+# a read-only token whatever the repo's default workflow permissions happen to
+# be set to. That default is a repository SETTING this file cannot see, so
+# read-only is declared here rather than assumed. It matters most on the weekly
+# dependency branch, which `npm-update.yml` dispatches this workflow
+# against: those runs execute unreviewed dependency code — `npm ci` lifecycle
+# scripts, and the suite loading the packages themselves — and a write-capable
+# token there would undo the no-write-token boundary the update job is built
+# around.
+permissions:
+  contents: read
+  # The docs lane's classify and gate steps read the PR's files and commits
+  # through the workflow token; read-only, and still nothing here can write.
+  pull-requests: read
+
+jobs:
+  # Decides whether the heavy job may skip: true only when every changed
+  # file in the PR is housekeeping (root-level markdown and the docs/ tree —
+  # see .github/lanes.conf for the rule; the engine is mikelward/lanes).
+  # Markdown elsewhere is code: being documentation is a matter of where a
+  # file lives, since markdown inside a tree can be a build input. A push to
+  # main is classified the same way, from the range it added (`push classify`
+  # in lanes.conf); anything the engine cannot prove the push added takes the
+  # code lane and runs everything.
+  classify:
+    name: Classify the diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.lane.outputs.docs_only }}
+      base_sha: ${{ steps.lane.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: mikelward/lanes@main
+        id: lane
+        with:
+          mode: classify
+          pr: ${{ github.event.pull_request.number || inputs.pr }}
+
+  ci:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Do not leave the token in .git/config where dependency
+          # code running later in this job could read it back out.
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # Read the major from .nvmrc rather than repeating it here, so CI,
+          # `nvm use`, and engines.node can't drift apart (nodeVersion.test.js
+          # asserts the last pair agree).
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
+
+  # The one check the main ruleset requires. Always runs, always reports —
+  # green only when the heavy job succeeded, or when it was skipped and the
+  # skip is INDEPENDENTLY verified as justified: the diff re-derived as
+  # housekeeping-only and every commit subject carrying a housekeeping
+  # prefix. Any other combination is an explicit red, never a silent pass.
+  # TEMPORARY, alongside `lanes` below: mikelward/lanes renamed its
+  # consumer-facing check from `gate` to `lanes` (mikelward/lanes#9), and the
+  # ruleset here still requires `gate`. Per that PR's staged-rename
+  # procedure, this duplicate keeps `gate` reporting until the ruleset is
+  # flipped to require `lanes` instead — then this job is deleted.
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [classify, ci]
+    if: always()
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: mikelward/lanes@main
+        with:
+          mode: gate
+          pr: ${{ github.event.pull_request.number || inputs.pr }}
+          classify-result: ${{ needs.classify.result }}
+          # Only read on a dispatched run — the base classify recorded before
+          # the heavy job ran; a pull_request run takes the same commit from
+          # its own event payload.
+          base-sha: ${{ needs.classify.outputs.base_sha }}
+          results: >-
+            ci=${{ needs.ci.result }}
+
+  # The renamed check (mikelward/lanes#9) — this is what the ruleset should
+  # require once it has reported at least once. Identical to `gate` above;
+  # see that job's comment for why both exist for now.
+  lanes:
+    name: lanes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [classify, ci]
+    if: always()
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: mikelward/lanes@main
+        with:
+          mode: gate
+          pr: ${{ github.event.pull_request.number || inputs.pr }}
+          classify-result: ${{ needs.classify.result }}
+          # Only read on a dispatched run — the base classify recorded before
+          # the heavy job ran; a pull_request run takes the same commit from
+          # its own event payload.
+          base-sha: ${{ needs.classify.outputs.base_sha }}
+          results: >-
+            ci=${{ needs.ci.result }}

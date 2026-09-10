@@ -577,7 +577,9 @@ reply, no offer to correct it. It is not a finding.
   picked the push up.
 - **Address Codex comments automatically — don't wait to be asked.** Read each
   one, decide whether it's a real issue or a false positive, and if it's real,
-  fix it in the same PR. Fold the fix into the commit it belongs to (rebase /
+  fix it in the same PR — the one exception being a real finding that's
+  genuinely out of scope for this PR, which you defer instead (see *Deferring a
+  finding* below). Fold the fix into the commit it belongs to (rebase /
   `--fixup`) rather than tacking on an "address review" commit, per the
   one-commit-per-logical-change rule. Group several small fixes into one
   commit when they share a topic.
@@ -603,8 +605,9 @@ reply, no offer to correct it. It is not a finding.
   a review is the attributable form, naming the commit it read. Findings
   arrive as review comments, as a top-level comment, or as a review — read
   `get_review_comments`, `get_comments` and `get_reviews` to the last page,
-  since all three page oldest first — and they block the merge until fixed
-  or rebutted; an acknowledgment is not an answer. Nothing from Codex since
+  since all three page oldest first — and they block the merge until fixed,
+  rebutted, or deferred (see *Deferring a finding* below); an acknowledgment
+  is not an answer. Nothing from Codex since
   the push, five minutes on, means it never picked it up — comment `@codex
   review`, once.
 - **Judge every review comment on merit, whoever wrote it.** Verify the
@@ -626,6 +629,14 @@ reply, no offer to correct it. It is not a finding.
   head or the point is rebutted; anything still to do stays open. When you think a comment is a false positive,
   say *why* on the thread (one or two sentences). Acknowledgment noise
   is fine and preferred over silence.
+- **Deferring a real-but-out-of-scope finding.** Don't ask the maintainer to
+  merge past it: note the follow-up in `TODO.md`, commit and push that first,
+  reply on the thread citing the sha, and resolve — resolving a deferred thread
+  is the exception to "anything still to do stays open" above. A finding with
+  no thread (top-level comment or review body) still gets the `TODO.md` record,
+  the push, and the reply — only the resolve is skipped. The push re-triggers
+  Codex; `@codex review` only for the five-minute-silence case. Escalate only
+  if the re-review re-raises it.
 - **Skip echo events silently.** `mcp__github__add_reply_to_pull_request_comment`
   / `add_issue_comment` post under whichever GitHub identity backs the MCP
   auth, so a moment after you post a reply the same body comes back as a

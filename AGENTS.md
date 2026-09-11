@@ -189,10 +189,16 @@ stopped biting.
   are considered. It was switched off after the config kept producing PRs that
   were unmergeable or actively harmful: Node patches that could never go green,
   and — once `constraints.npm` was added — an auto-merge-eligible npm floor
-  above what the pinned Node major bundles. GitHub's own Dependabot **security**
-  updates are a separate switch in repo settings and still run, so advisories
-  stay covered. Everything in the Renovate bullets below is dormant but
-  retained, so re-enabling is deleting one key rather than rebuilding a config that took several rounds to
+  above what the pinned Node major bundles. GitHub's Dependabot **alerts** stay
+  on, but its **security updates** are off too (2026-09-11): a grouped
+  security update for a transitive `@vitest/mocker` advisory arrived as a
+  vitest 4 → 5 major when the patched 4.1.11 sat inside the declared range,
+  because grouped security updates resolve to the latest version, not the
+  lowest fixed one. An advisory is therefore an alert to act on by hand — bump
+  the affected package together with any peer-pinned partner
+  (`@vitest/coverage-v8` for vitest) — unless the weekly npm-update batch has
+  already carried the fix. Everything in the Renovate bullets below is dormant
+  but retained, so re-enabling is deleting one key rather than rebuilding a config that took several rounds to
   get right; `renovate.test.js` asserts the switch, so an accidental re-enable
   fails CI. Uninstalling the Mend app at developer.mend.io is the other half, if
   you want the jobs to stop running at all.

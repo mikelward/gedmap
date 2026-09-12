@@ -626,7 +626,8 @@ reply, no offer to correct it. It is not a finding.
   maintainer's call, not one to settle either way yourself. Declining
   doesn't clear the required `codex` status: post the rebuttal, then
   `@codex review` once — a push does the same if the rebuttal is up first.
-  Escalate only if it re-raises.
+  Escalate if it re-raises, or if five minutes on that review has not landed
+  either.
 - **A second verified finding in the same mechanism is evidence about the
   design, not another bug.** Before fixing it, look for the same shape
   elsewhere and ask whether a different design would delete the class rather
@@ -644,7 +645,8 @@ reply, no offer to correct it. It is not a finding.
   no thread (top-level comment or review body) still gets the `TODO.md` record,
   the push, and the reply — only the resolve is skipped. The push re-triggers
   Codex, so don't also poke it unless five minutes pass with nothing back;
-  escalate only if the re-review re-raises it.
+  escalate if the re-review re-raises it, or is still missing five minutes
+  after the poke.
 - **Skip echo events silently.** `mcp__github__add_reply_to_pull_request_comment`
   / `add_issue_comment` post under whichever GitHub identity backs the MCP
   auth, so a moment after you post a reply the same body comes back as a

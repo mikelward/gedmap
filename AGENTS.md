@@ -615,7 +615,8 @@ reply, no offer to correct it. It is not a finding.
   rebutted, or deferred (see *Deferring a finding* below); an acknowledgment
   is not an answer. Nothing from Codex since the push, five minutes on, or a
   clean review that left no reaction, leaves the `codex` status pending —
-  comment `@codex review`, once.
+  comment `@codex review`, once; if that has not landed five minutes on,
+  escalate rather than poking again.
 - **Judge every review comment on merit, whoever wrote it.** Verify the
   claim before acting; if it doesn't hold up, reply saying why and decline.
   A comment citing a rule is a *reading* of that rule, not the rule — check

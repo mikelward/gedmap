@@ -614,8 +614,8 @@ reply, no offer to correct it. It is not a finding.
   since all three page oldest first — and they block the merge until fixed,
   rebutted, or deferred (see *Deferring a finding* below); an acknowledgment
   is not an answer. A pending `codex` status is one of three things.
-  Findings to address — address them. A review that landed but left no
-  reaction, or a rebuttal it hasn't answered — poke `@codex review` once,
+  Findings to address — address them. A clean review that left no reaction,
+  or a rebuttal it hasn't answered — poke `@codex review` once,
   now. Nothing back at all — poke once, five minutes after the push.
   Escalate five minutes after the poke rather than poking a second time.
 - **Judge every review comment on merit, whoever wrote it.** Verify the

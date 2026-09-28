@@ -393,9 +393,11 @@ stopped biting.
   remote is reachable (Codex cloud), say the history is truncated rather
   than quoting a count.
 - **Merge cue (`merged` / `I merged` / `landed` / merge webhook) runs hygiene
-  *before* engaging with the rest of the message:** `git fetch origin main`,
-  cut a fresh `claude/<short-topic>` branch off `origin/main`, announce the
-  switch. Where the sandbox has no remote, the cue can't be honored as written
+  *before* engaging with the rest of the message:** `git fetch origin
+  +refs/heads/main:refs/remotes/origin/main` (`git fetch origin main` alone
+  leaves `origin/main` stale in a single-branch clone), cut a fresh
+  `claude/<short-topic>` branch off `origin/main`, announce the switch. Where
+  the sandbox has no remote, the cue can't be honored as written
   — a fresh branch needs a base that contains the merge, and an offline
   checkout can't fetch one; say so and ask for a synced checkout rather than
   branching off a stale `main`. The cue is about the branch that merged: when

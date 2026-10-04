@@ -1,6 +1,16 @@
+---
+trigger: always_on
+alwaysApply: true
+last_modified: 2026-10-04
+---
+
 # GedMap
 
 Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbox map.
+
+**At the start of every session, print the path of the `AGENTS.md` you loaded and its
+`last_modified` date** (front matter), so a stale or wrong copy is caught before it steers
+the work. Bump `last_modified` whenever you edit this file.
 
 ## Tech Stack
 

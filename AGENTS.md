@@ -8,6 +8,9 @@ last_modified: 2026-10-17
 
 Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbox map.
 
+`CLAUDE.md` and `GEMINI.md` are symlinks to this file, so every agent reads the
+same conventions. Edit `AGENTS.md`.
+
 **At the start of every session, print the full absolute path of the `AGENTS.md` you
 loaded and its `last_modified` date** (front matter), so a stale or wrong copy is caught
 before it steers the work. Bump `last_modified` whenever you edit this file.
@@ -138,7 +141,9 @@ stopped biting.
   nothing else pinned anything at all, which is how the drift started.
 - **The web sandbox is the consumer that can't follow on its own.** Its image
   ships whatever Node it ships (22 today), so `.claude/hooks/session-start.sh`
-  provisions the `.nvmrc` major before `npm install`. It re-resolves the newest
+  provisions the `.nvmrc` major before `npm install` — automatically only in
+  Claude Code; another agent runs the hook (or `nvm use`) itself before
+  `npm install`. It re-resolves the newest
   release of that major every run rather than trusting the container's cached
   copy, because container state survives between sessions and an
   existence-only check would pin the first version ever installed.
@@ -325,6 +330,11 @@ stopped biting.
   blank line — the body is not size-constrained. A commit with nothing to
   explain needs no body: the weekly dependency batch is the standing example,
   where the diff is the manifests and the PR carries the check results.
+- **No model identifier** — never name the coding agent's model or version
+  (`Opus 4.8`, `Sonnet`, `Gemini …`, `claude-*`, `gemini-*`) in a commit, PR,
+  comment, or pushed artifact; keep it to chat. Generic attribution
+  (`Co-Authored-By: Claude` / `Gemini`, `Claude-Session:`, "Generated with
+  Claude Code") is fine.
 - **Prefix a subject that does not change what the app does.** A bare subject
   means a user could notice the difference. Anything else takes one of these,
   lowercase, followed by the sentence-case subject as above:
@@ -359,7 +369,8 @@ stopped biting.
 
 ## Branching
 
-- **Workflow.** `claude/<short-topic>` branch off `origin/main` → PR →
+- **Workflow.** `<agent>/<short-topic>` (`claude/…` Claude Code, `gemini/…`
+  Gemini / Antigravity, `codex/…` Codex) branch off `origin/main` → PR →
   rebase-merge. One topic per branch. Follow-up work after a merge goes on a
   new branch. Never commit to `main` / `master`. Squash merging is disabled on
   every repository in this fleet, so each commit's own subject is what lands —
@@ -405,7 +416,7 @@ stopped biting.
   *before* engaging with the rest of the message:** fetch main if the sandbox
   can (`git fetch origin +refs/heads/main:refs/remotes/origin/main`; `git
   fetch origin main` alone leaves `origin/main` stale in a single-branch
-  clone), cut a fresh `claude/<short-topic>` branch off `origin/main`,
+  clone), cut a fresh `<agent>/<short-topic>` branch off `origin/main`,
   announce the switch. Where the sandbox has no remote, the cue can't be
   honored as written — a fresh branch needs a base that contains the merge,
   and an offline checkout can't fetch one; say so and ask for a synced
@@ -416,7 +427,7 @@ stopped biting.
   not advance, and naming the lower branch as the upstream boundary so a
   squash merge doesn't replay the lower commits too. Carry on there — don't
   abandon it for a new topic branch.
-- **After a merge, take a fresh `claude/<short-topic>`** — don't reset the
+- **After a merge, take a fresh `<agent>/<short-topic>`** — don't reset the
   merged name onto the new base. Its remote ref still points at the pre-merge
   tip, so `origin/<branch>..HEAD` keeps spanning the merged commits and
   unpushed-work checks report your own merged history back at you. When a
@@ -447,7 +458,7 @@ reply, no offer to correct it. It is not a finding.
 - **No-remote sandbox exception.** Sandboxes without remote Git support (such
   as Codex cloud) may continue from the checked-out HEAD without fetching
   `origin` — but still on this task's own topic branch: unless the checked-out
-  branch is already it, cut a local `claude/<short-topic>` first — and cut it
+  branch is already it, cut a local `<agent>/<short-topic>` first — and cut it
   from a base free of earlier work (local `main` where it carries none,
   otherwise ask for a synced checkout), since branching off a stale topic tip
   only renames that topic's commits into your PR. Committing onto `main` or
@@ -495,11 +506,13 @@ reply, no offer to correct it. It is not a finding.
   ask is here, and it doesn't need repeating per branch.
 - **Watch your own PRs by subscription, plus one scheduled check.** Have a
   subscription — Claude Code makes one when you open a PR; where a client
-  doesn't, call `subscribe_pr_activity`. It delivers reviews, comments and CI
-  failures. It cannot deliver CI *success*, a push, the merge, Codex's clean
-  verdict (a reaction), or Codex never answering at all — so keep exactly one
-  check armed for as long as the PR is open (each event and each check costs
-  a model turn). Under drive, arm auto-merge at PR open too — but only where
+  doesn't, call `subscribe_pr_activity` (exposed only in `claude-code-remote`).
+  It delivers reviews, comments and CI failures. It cannot deliver CI
+  *success*, a push, the merge, Codex's clean verdict (a reaction), or Codex
+  never answering at all — so keep exactly one check armed for as long as the
+  PR is open (`send_later` in Claude Code; `schedule` with `DurationSeconds` in
+  Antigravity, canceled via `manage_task` `kill`; each event and each check
+  costs a model turn). Under drive, arm auto-merge at PR open too — but only where
   the ruleset makes the Codex verdict a required check AND requires
   conversations resolved: where CI is the only requirement it merges before
   Codex has answered, and an open review comment holds nothing back on its own.
@@ -547,7 +560,8 @@ reply, no offer to correct it. It is not a finding.
     if it doesn't merge cleanly with it (`git merge-tree --write-tree`, Git
     2.38 or later, exits 1). Any exit but 0 or 1 from either is a failure
     to report, not an answer. Your own rules decide the rebase from there.
-    Skip a PR with no session URL, and don't retry a failed send; its own
+    Skip a PR with no session URL, or when your client has only local
+    subagent messaging, and don't retry a failed send; its own
     scheduled check is the fallback.
   - Merged or closed, take one last reply-and-resolve pass — a review can
     land after the merge. Nothing is holding the PR now, so on a merged one
@@ -632,7 +646,9 @@ reply, no offer to correct it. It is not a finding.
   one-commit-per-logical-change rule. Group several small fixes into one
   commit when they share a topic.
 - **Reply to (and resolve) every addressed comment**, one thread at a time,
-  not in bulk. `resolve_review_thread` works — pass the `PRRT_*` thread node
+  not in bulk. Prefer the `mcp__github__*` tools where mounted (Claude Code
+  requires them); otherwise fall back to `gh`, resolving with `gh api graphql`
+  `resolveReviewThread`. `resolve_review_thread` works — pass the `PRRT_*` thread node
   ID from `pull_request_read` / `get_review_comments` (`review_threads[].id`)
   as `threadId`. A comment's `PRRC_*` node ID fails; they're different
   objects. Order of operations: push the fix commit first, then reply citing

@@ -1,7 +1,7 @@
 ---
 trigger: always_on
 alwaysApply: true
-last_modified: 2026-10-16
+last_modified: 2026-10-17
 ---
 
 # GedMap
@@ -119,10 +119,8 @@ stopped biting.
 
 ## Asking questions
 
-- **Ask in chat, never with `AskUserQuestion`.** That's Claude Code's
-  multiple-choice question prompt, and it's broken in the Claude mobile app —
-  a question asked through it may be unanswerable. Plain chat also keeps the
-  question, its context, and the answer in one readable thread.
+- **Ask in plain chat or the client's question tool** — `AskUserQuestion` in
+  Claude Code, `ask_question` in Antigravity.
 - **After asking, stop and wait for the answer.** Don't proceed on an assumed
   answer, pick a "recommended" option yourself, or keep working on the part
   the question affects.

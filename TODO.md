@@ -105,6 +105,10 @@ pull request that installed these files.
 
 ## CI
 
+- **Check `AGENTS.md` < 24,000 bytes in CI** (mikelward/stopdash#932): add
+  `test "$(wc -c < AGENTS.md)" -lt 24000` to `.github/workflows/ci.yml` on the
+  docs/classify path, so `AGENTS.md` can't silently grow past Antigravity's
+  24,000-byte per-file rule cap.
 - Add an AGPL license gate: fail CI if a dependency declares an AGPL
   license, so introducing one by hand in a normal PR is caught, not just
   ones the weekly bot bumps. Likely `license-checker-rseidelsohn` checking

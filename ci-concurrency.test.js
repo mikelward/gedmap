@@ -21,11 +21,11 @@ describe('the workflow-level concurrency group', () => {
     expect(workflow.match(/^concurrency:/gm)).toHaveLength(1);
   });
 
-  it('groups a pull request by its number and main by commit', () => {
+  it('groups a pull request by its number, a dispatch by the PR it names, and main by commit', () => {
     // A dispatch at the weekly dependency branch falls through to its ref,
     // so a re-dispatch replaces the stale run on that branch.
     expect(block[1]).toContain(
-      `  group: ci-\${{ ${MAIN} && format('main-{0}', github.sha) || github.event.pull_request.number || github.ref }}\n`,
+      `  group: ci-\${{ ${MAIN} && format('main-{0}', github.sha) || github.event.pull_request.number || inputs.pr || github.ref }}\n`,
     );
   });
 

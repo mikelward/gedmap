@@ -63,7 +63,9 @@ permissions:
 # main, or a dispatch aimed at it, gets a group of its own keyed by commit, so
 # no main run is canceled or evicted from the one pending slot a group holds.
 # Keyed on the event, not the ref, so a move to `pull_request_target` can't
-# collapse every pull request into one group.
+# collapse every pull request into one group. A dispatch naming a pull request
+# (npm-update's batch) joins that pull request's group through `inputs.pr`,
+# so it and a `pull_request` run for the same PR never run side by side.
 #
 # An `edited` run never cancels: it carries the head as of the edit, and the
 # body edit lands just before its push, so GitHub starting it after the push's
@@ -71,7 +73,7 @@ permissions:
 # It queues behind the run in progress instead, and a later push's run
 # replaces it while it waits.
 concurrency:
-  group: ci-${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && format('main-{0}', github.sha) || github.event.pull_request.number || github.ref }}
+  group: ci-${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && format('main-{0}', github.sha) || github.event.pull_request.number || inputs.pr || github.ref }}
   cancel-in-progress: ${{ !(github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && github.event.action != 'edited' }}
 
 jobs:

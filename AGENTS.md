@@ -1,7 +1,7 @@
 ---
 trigger: always_on
 alwaysApply: true
-last_modified: 2026-10-17
+last_modified: 2026-10-22
 ---
 
 # GedMap
@@ -298,8 +298,10 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
   top-level comments or reviews — read all three to the last page — and block the merge
   until fixed, rebutted or deferred; an acknowledgment isn't an answer. A pending `codex`
   status: findings → address them; a clean review with no reaction, or an unanswered
-  rebuttal → `@codex review` once, five minutes later; nothing at all → poke once, five
-  minutes after the push. Escalate five minutes after a poke rather than poking twice.
+  rebuttal → `@codex review` five minutes later; nothing at all five minutes after the
+  push, or a review stuck at running (👀) ten minutes on → poke. A poke that hangs the
+  same way gets a second an hour later; escalate only if that one hangs too, never after
+  one (maintainer, 2026-10-22).
 - **Once Codex has +1'd a head, make no unnecessary change without asking** (maintainer,
   2026-10-13); a required rebase (`dirty`, or `behind` where up to date is required), a
   red-CI fix, and drive or autopilot proceed unasked.

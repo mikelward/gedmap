@@ -6,319 +6,115 @@ last_modified: 2026-10-26
 
 # GedMap
 
-Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbox map.
-`CLAUDE.md` and `GEMINI.md` are symlinks to this file. Edit `AGENTS.md` and bump
-`last_modified`.
+Maps ancestor birthplaces from a GEDCOM file, entirely in the browser: React, TypeScript,
+Vite and Tailwind, with Mapbox for the map and HERE for geocoding. `spec.md` is the
+product, `docs/agents-reference.md` the background.
 
-**At the start of every session, print the full absolute path of the `AGENTS.md` you
-loaded and its `last_modified` date** (front matter), so a stale or wrong copy is caught
-first.
+## Fleet conventions
 
-Keep this file short — one-liners over essays, **under 22,000 bytes** (`wc -c AGENTS.md`):
-Antigravity caps rule files at 24 KB and silently truncates the tail. State the rule and
-the failure it prevents; incident narratives belong in commits, background in
-`docs/agents-reference.md`. Add a rule the first time something bites, rewrite or trim
-rather than append, and delete rules that stopped biting.
+Shared by every mikelward repo and the user-level agent config; canonical in mikelward/conf
+`agents/AGENTS.md`. A repo's Project section overrides it.
 
-## Stack and commands
+### This file
 
-TypeScript (strict), React 19, Vite 8, Tailwind CSS 4, Vitest; Mapbox GL JS for the map;
-HERE Geocoding API for place lookups.
+- **Session start**. At the start of every session, print the full absolute path of the
+  `AGENTS.md` you loaded and its `last_modified` date.
+- **Canonical**. AGENTS.md is canonical; `CLAUDE.md` and `GEMINI.md` point to it. Keep it
+  brief, generic to all agents (noting per-agent exceptions), and under 22,000 bytes.
+  Bump `last_modified` whenever you edit this file.
 
-```sh
-npm install
-npm run dev        # dev server
-npm run build      # typecheck (tsc -b) + production build
-npm run lint       # ESLint
-npm run typecheck  # tsc -b --noEmit
-npm test           # all tests once (test:watch; test:coverage for V8 coverage)
-```
+### Talking to the user
 
-## Testing
+- **Questions**. One at a time; wait for the answer.
+- **Messages**. Send one only for a question, a blocker, something to act on, or a change
+  of plan. No progress reports or narrating events.
+- **Claude Code**. It reliably shows only a turn's last message; put everything there.
+- **Replies**. Short, key point first, ending with open PR links and any pending
+  question.
+- **Network access**. If you want access to a host and you can't access it or a mirror,
+  ask the user to allowlist the domain(s) along with the purpose.
 
-- Vitest, jsdom for components; `*.test.{ts,tsx}` next to the source (suite map in
-  `docs/agents-reference.md`).
-- Utility tests import directly and use mock search functions; component tests use
-  `@testing-library/react`, wrapped in `<ThemeProvider>` when the component calls
-  `useTheme()`. The geocode tests set `import.meta.env.VITE_HERE_API_KEY` via
-  `vi.hoisted()` and mock `fetch`. Build strict `AncestorEntry`/`GeocodedAncestor`/
-  `PersonSummary` fixtures with `src/testFixtures.ts`, not by hand.
-- **Always add tests**: every new function, hook or component gets one exercising its
-  behavior; a bug fix gets a regression test that fails before the fix.
-- **Run tests before reporting done**: `npm test` and `npm run lint` must pass, and
-  `npm run build` when you touch build config.
-- **Fix preexisting failures as the first commit**; if genuinely unrelated and out of
-  scope, say so up front and confirm before skipping. **No sleeps, retries or bumped
-  timeouts** for flaky tests — controlled promises, fake timers, `act(...)`, or fix the
-  race. **Never disable a failing check** (lint, typecheck, test, hook).
+### Git
 
-## Talking to the user
+- **Branches**. `<agent>/<topic>` off a fresh `origin/main` (fetch by refspec). Never
+  commit to `main`.
+- **Your branches**. Push, force-push with lease, and delete them freely. Ask before
+  touching others', `main`, settings, secrets or paid services.
+- **Commits**. One per logical change; fold in review fixes.
+- **Subjects**. Changelog lines: imperative, the user-visible change, ≤ 70 chars. PR
+  titles match.
+- **Prefixes**. `docs:`, `test:`, `build:`, `refactor:` mark what users won't notice. No
+  `feat:` or `fix:`.
+- **Model names**. Never in anything pushed.
+- **After a merge**. Branch afresh.
+- **Shallow clones**. Unshallow before trusting history or calculating a version code.
+- **Language**. US English everywhere.
 
-- **One question at a time**, in plain chat or the client's question tool
-  (`AskUserQuestion` in Claude Code, `ask_question` in Antigravity), never while the user
-  is typing. Then stop and wait: no assumed answer, self-picked "recommended" option, or
-  work on what it affects.
-- **Answer a mid-turn message first**, before any further tool call — except a merge cue,
-  whose hygiene runs first and whose announced switch is the answer. **Claude Code only**
-  (maintainer, 2026-10-25): its app reliably shows just a turn's last message, so reply
-  only there, answering a mid-turn message at a stopping point soon.
-- **Message only when the user needs to see it** (maintainer, 2026-10-15; each notifies
-  their phone): a question/blocker, something to merge or act on, a merge, an autopilot
-  decision (to review when seen, never waited on), or a change from the plan, `spec.md` or
-  their instructions (review-prompted included). Never progress (a client's nudge doesn't
-  count), a review or push alone (its report rides the next message), routine machinery,
-  or a mistake fixed before reaching the repo. The session-start line still opens every
-  session.
-- **Keep replies short**: lead with the most important point; ask before unloading more.
-- **End the turn by restating any pending decision** (a question or autopilot guess) as
-  its last line, written out, every turn until answered, the open-PR link just above.
-  Nothing pending, no line. A scheduled check finding nothing new re-arms silently, no
-  reply.
+### Pull requests
 
-## Node version
+- **Opening**. Open the PR unasked; update its title and body before each push.
+- **Watching**. PR events plus one scheduled check (events miss CI success and Codex's
+  👍).
+- **Auto-merge**. Enable it on PRs that target `main`; stack dependent ones.
+- **Base moved**. After a merge, tell open PRs on that base whose body ends with a session
+  URL.
+- **Merge or close**. Answer remaining threads and stop watching.
 
-- **`.nvmrc` and `engines.node` name the Node major and move together or not at all**;
-  `nodeVersion.test.js` fails CI on a split. **Never hard-code a version in `ci.yml`** —
-  use `node-version-file: .nvmrc`. Currently Node **24** (active LTS).
-- **`.claude/hooks/session-start.sh` provisions the `.nvmrc` major before `npm install`**
-  — automatically only in Claude Code; another agent runs the hook (or `nvm use`)
-  itself. It re-resolves the newest release every run (offline: keeps the cached
-  toolchain and says so) and writes `PATH` to `$CLAUDE_ENV_FILE`, else symlinks the tools
-  into `PATH` under `$HOME` (never an rc file); its refusals: `docs/agents-reference.md`.
-- **The hook and `scripts/session-start-hook.test.js` are identical in gedmap,
-  newshacker and readmo**: change all three, keep the Node block byte-identical. The test
-  runs the real hook via `SESSION_NODE_ROOT`/`SESSION_NODE_DIST_URL` (no network, no
-  stubs); assert behavior, not structure — its failure mode is a false pass.
-- **Renovate can't bump Node**: `.nvmrc` holds the bare major; patches and minors are off,
-  a major waits behind `dependencyDashboardApproval`. Checking that box means doing the
-  migration now — restore the bare major in `.nvmrc` by hand.
+### Reviews
 
-## Dependency updates
+- **Codex**. It reviews automatically. Fix, decline with a reason, or defer to `TODO.md`
+  every comment; reply citing the commit, then resolve.
+- **Merit**. Codex over-reads rules, privacy especially: quote and decline rather than
+  cripple the code. Design changes are the user's call.
+- **Verdict**. 👍 is clean, 👀 is reviewing. Only the code review gates merging: its
+  findings (review comments, PR comments, reviews) block it. Security reviews often
+  hang; don't wait on them.
+- **Hung review**. `@codex review` after five quiet minutes, again an hour later, then
+  tell the user.
+- **After a 👍**. Ask before unneeded changes.
+- **Reports**. Give each review's findings in your next message.
 
-- **The weekly batch lives in mikelward/npm-update**; `.github/workflows/npm-update.yml`
-  is a thin caller (gedmap is its pilot consumer). Mechanism fixes land there, not here.
-- **Renovate is off** (`"enabled": false`, asserted by `renovate.test.js`; re-enabling is
-  deleting that key, the rest of `renovate.json` kept dormant). Dependabot alerts stay on;
-  its security updates are off (2026-09-11): act on an advisory by hand, bumping any
-  peer-pinned partner (`@vitest/coverage-v8` for vitest), unless the weekly batch carried
-  the fix. Uninstalling the Mend app at developer.mend.io stops the jobs entirely.
-- **Editing `renovate.json` or re-enabling it**: follow the checklist in
-  `docs/agents-reference.md` (validator, job log, `mode`, schedules). Minors and patches
-  auto-merge on green CI; majors and `0.x` wait; a red or skipped check is a stop sign.
-- **`.npmrc`'s `min-release-age` (5 days, in step with the shortest cooldown) is the
-  cooldown lock-file and transitive resolution actually get** (resolution only; `npm ci`
-  uses the lockfile). It needs npm ≥ 11.10.0, pinned exactly in `engines.npm` and
-  `constraints.npm` (`renovate.test.js` asserts all three; `npm` is disabled in
-  `packageRules`); raise it by hand only if a later npm is genuinely required and the
-  Node major bundles it. `min-release-age-exclude` takes an `npm audit fix` the window
-  blocks.
+### Autonomy
 
-## Error handling
+- **Fix proactively**. Lint, test, presubmit, CI and review failures, unasked.
+- **Proactive refactors**. Repeated bugs in one area, duplicated code, or a change with
+  twins elsewhere: suggest the redesigned or shared version.
+- **Drive to merge**. Once the details are agreed, see the change through unattended:
+  implement it, open the PR, keep it mergeable (fix CI, answer reviews, rebase when it
+  conflicts or falls behind), and merge once CI is green and Codex 👍s, or let
+  auto-merge.
+- **Drive**. Take `TODO.md` items one at a time and drive each to merge, until done or
+  stopped.
+- **Autopilot**. Drive without asking, logging guesses in `TODO.md` under *Decisions
+  needing review*. Still ask before anything irreversible, outside this repo, or private.
+- **Red baseline**. Fix existing failures first, in their own commit.
 
-- **Don't silently swallow exceptions.** Every catch **logs** the error with sanitized
-  context (operation, status code — "geocode failed: 404" or a record id; never an API
-  key, a raw response body, or a GEDCOM record's personal details), **cleans up** what
-  `try` acquired (abort controllers, in-flight geocoding, partial UI state), and **handles
-  the edge case explicitly** (default, `null`, error result, rethrow). A blanket `catch`
-  also swallows `AbortError`; in the geocoding path a swallowed HERE error looks like "no
-  location" rather than a failure. To ignore a failure on purpose, name why in a one-line
-  comment ("HERE returns 404 for unresolvable places, treat as unmapped") and still log at
-  debug.
+### Quality
 
-## Privacy
+- **Tests**. Every behavior change gets one; a bug fix's fails first. Assert behavior,
+  not structure. No sleeps or retries; never disable a failing check.
+- **Docs**. Keep `SPEC.md` and `README.md` current.
+- **CI**. Wait for it before claiming success.
+- **Errors**. Never swallow one; log it with context and clean up.
+- **Cost**. State the cost and reliability of new dependencies or services up front.
+- **Privacy**. No user data (personal paths, hostnames, tokens, keys, private remotes)
+  leaves this machine; use placeholders.
+- **Portability**. Flag anything that won't run on Linux and macOS.
 
-- **Never put user data in any artifact leaving this machine** (commits, PRs, replies,
-  issues, branches, comments, fixtures, logs). **GEDCOM files are the hazard**: dense PII
-  about living relatives. Never commit a real GEDCOM, paste an excerpt, or build a fixture
-  from one — hand-write obviously fake people (`/Doe/ John`, `1 JAN 1900`, "City A"). Same
-  for `VITE_HERE_API_KEY`, the Mapbox token, and screenshots of a real tree or map.
-  Paraphrase real records from bug reports; ask when in doubt.
+## Project
 
-## Commit messages
-
-- **Title like a changelog line** (maintainer, 2026-10-23): after any prefix, an imperative
-  verb, then the change in the user's plain words, sentence case, ≤ ~70 chars with prefix,
-  e.g. `Fix …` for what was broken, `Improve …` for what got better, `Add …` for what's
-  new; an optional parenthetical says how. Never the scenario or the mechanism: those, and
-  file:line, go in the body. A commit with nothing to explain needs no body (the weekly
-  dependency batch). PR titles match.
-- **Prefix a subject that doesn't change what the app does** (bare means a user could
-  notice): `docs:` prose (`spec.md`, this file, other Markdown), `todo:` `TODO.md` alone,
-  `test:` tests only, `build:` toolchain/CI/lint/build config/`scripts/`, `refactor:`
-  deliberately behavior-preserving. No `feat:`/`fix:` (they'd prefix nearly everything)
-  and no `deps:` (a dependency bump changes what the app runs, so it's bare; one taken
-  for its behavior says what changed). `TODO.md`/`spec.md` ride along and decide the
-  prefix only when they are the whole change. A mixed commit is bare if any part changes
-  behavior; below that the prefix names why the commit exists, not what
-  it touched. Two independent categories are two commits.
-- **No model identifier** — never name the coding agent's model or version (`Opus 4.8`,
-  `Sonnet`, `Gemini …`, `claude-*`, `gemini-*`) in a commit, PR, comment, or pushed
-  artifact; keep it to chat. Generic attribution (`Co-Authored-By: Claude` / `Gemini`,
-  `Claude-Session:`, "Generated with Claude Code") is fine.
-
-## Branching
-
-- `<agent>/<short-topic>` (`claude/…` Claude Code, `gemini/…` Gemini / Antigravity,
-  `codex/…` Codex) off `origin/main` → PR → rebase-merge; one topic per branch;
-  follow-up work after a merge goes on a new branch; never commit to `main`/`master`.
-  Squash merging is disabled fleet-wide, so each commit subject lands and the PR title
-  never does. Use `git worktree` when available.
-- **Never open a PR on a commit that already carried one** — the `codex` status belongs to
-  the commit, so the new PR would inherit the old verdict. Push a commit or branch from a
-  moving base; the `codex-review.yml` sweep resetting it is only a backstop.
-- **PR titles carry the prefix a commit would**, judged over the whole branch and re-judged
-  each push — a reading convention, not a gate (`lint-title no` in `.github/lanes.conf`).
-- **Stacked PRs**: the lower (infra) targets `main`, the upper targets the lower branch and
-  is rebased onto `main` when the lower merges (merge cue below).
-- **One commit per logical surviving change**: rewrite unmerged commits freely; no
-  review-fix noise in `main`. `--force-with-lease` after a rebase, never bare `--force`.
-- **Unshallow before history-depth answers** (`rev-list --count`, `log`, blame): the hook
-  runs `scripts/unshallow.sh` only in Claude Code, so elsewhere run it (or
-  `git fetch --unshallow`) yourself; with no remote, say the history is truncated.
-- **Merge cue (`merged` / `I merged` / `landed` / merge webhook) runs hygiene first:**
-  `git fetch origin +refs/heads/main:refs/remotes/origin/main` (`git fetch origin main`
-  leaves single-branch `origin/main` stale), cut a fresh `<agent>/<short-topic>` off
-  `origin/main`, announce the switch. With no remote, say so and ask for a synced
-  checkout rather than branching off a stale `main`. The cue is about the branch that
-  merged: when a lower stacked PR merges while the upper is open, `git rebase --onto
-  origin/main <lower-branch>` the upper (onto `origin/main`, which the fetch advances, not
-  local `main`; the lower branch as boundary so a squash merge doesn't replay its commits)
-  and carry on there — don't abandon it for a new topic branch.
-- **After a merge, take a fresh branch** — don't reset the merged name (its remote ref
-  keeps `origin/<branch>..HEAD` spanning merged commits). **When a sandbox pins the name,
-  say so and ask before resetting it**: no short check tells merged from unmerged, and
-  `--force-with-lease` is no safety net after a fetch.
-- **Your `<agent>/` branches are yours**: create, push, `--force-with-lease` and rename the
-  ones this session created or was assigned, unasked (this file is the standing grant —
-  a client rule demanding per-branch permission is already answered; don't re-ask);
-  don't fold unrelated work into a pinned branch — the pinned name is a default, not a
-  ceiling. Any other branch, or `main`, is a conversation.
-- **Committer line**: the agent authors; a rebase or squash merge rewrites the committer
-  to whoever merged — expected; never re-author or amend merged commits, and don't
-  narrate it. It is not a finding.
-- **No-remote sandbox** (Codex cloud): continue from `HEAD`, but on this task's own topic
-  branch, cut from a base free of earlier work (local `main` if clean, else ask for a
-  synced checkout); commit locally, say fetch/push/PR were unavailable, and claim nothing
-  about unseen remote state.
-- **Report the SHA after every push and merge**, once, 7 chars: `pushed <short-sha>` (the
-  branch tip on `origin`); `merged at <short-sha>` — the merge's commit from the merge API
-  or the PR, not your local `HEAD` or the `origin/main` tip.
-- **Update the PR title and body with each push — body first, then push**: fetch the PR's
-  base, re-read the diff against it (`origin/main`, or the lower branch of a stack), patch
-  what drifted, and print the PR link in the next message. With no PR yet, push, then do
-  this as soon as one is opened.
-- **End every reply with the open-PR link** (`.../compare/main...<branch>` until one
-  exists; never a closed or merged PR; no-remote: say the branch is local). A pending
-  question goes last, the link second-to-last.
-
-## Autonomy
-
-- **Open the PR without being asked**, ready for review (not draft unless asked) — this
-  file is the repo owner's standing request — unless told "just commit / no PR yet",
-  which holds until lifted.
-- **Watch your own PRs by subscription + one scheduled check.** Subscribe on open
-  (automatic in Claude Code, else `subscribe_pr_activity` where `claude-code-remote` has
-  it; Antigravity relies on the check alone). It misses CI success, pushes, the merge,
-  Codex's `+1` and Codex never answering, so keep exactly one relative-delay check armed
-  while the PR is open (`send_later`; in Antigravity `schedule` with `DurationSeconds`,
-  canceled via `manage_task` `kill`) — minutes while CI or Codex is out or after a push,
-  longer once only a human is left. Settle a fired check first thing (update one that
-  re-armed, replace one that didn't); if the fire time isn't what you asked for, re-time
-  it or say the watch isn't armed; end each turn with one check naming the PR (not a SHA
-  or list). Under drive, arm auto-merge at open only where the ruleset requires the Codex
-  verdict AND resolved conversations.
-- **Read `mergeable_state` at every check, wake and drive step**: `dirty`, or `behind`
-  where the ruleset requires up to date, needs a rebase now, unasked. Fetch base and head
-  by refspec, unshallow, rebase onto the fetched `origin/<base>` (not always `main`, never
-  the local branch), and `--force-with-lease` — after confirming your branch has every
-  remote head commit and the head hasn't moved since the tip you noted before fetching; if
-  not, or unsure, stop and ask.
-- **Wake PRs a merge leaves behind.** First turn after your PR merges (by hand or
-  auto-merge), message every other open PR on that base driven by another session (its
-  body ends with the session URL): name that PR and say only that its base now points at
-  `<sha>`, whatever its state reads; name no merge and no other PR. Skip a PR with no
-  session URL, or when your client has only local subagent messaging; don't retry a
-  failed send. Receiving one: test and rebase per `docs/agents-reference.md` § Waking
-  PRs.
-- **On merge or close**, one last reply-and-resolve pass. On a merged PR anything real goes
-  to a follow-up PR named on the thread before resolving; closed-unmerged is a stop —
-  answer, resolve, open nothing. Then cancel the check and unsubscribe, if subscribed;
-  `list_triggers` spans the account, so match session and PR before updating or deleting
-  one.
-- **A scheduler, GitHub or `git push` prompt is said once, then carry on.**
-- **"Drive"**: pick the next actionable task (ready to build — skip anything deferred or
-  awaiting a product decision), implement, open the PR, wait for Codex, address every
-  comment, merge on green CI plus Codex's verdict for the current head (that PR stretch is
-  *drive to merge*), repeat until the work runs out or the user says stop.
-- **A red baseline is the next task**: get `npm test` and `npm run lint` green first, as
-  its own first commit. Skipping a failure as genuinely unrelated needs the user's real
-  answer — never your call or autopilot's guess.
-- **"Autopilot"**: drive without blocking — take the cheapest-to-undo guess and log it in
-  `TODO.md` under *Decisions needing review*, created if missing (decision, alternative,
-  why reversible); it outranks stop-and-wait. The loop's own steps (commit, push, PR,
-  reading CI and reviews, arming checks, merging green) are authorized. Still waiting for
-  a real answer: destructive or irreversible actions outside the loop (shared-history
-  rewrites, deleting work, systems beyond this repo), resetting a pinned merged branch,
-  and privacy uncertainty (a GEDCOM name, a birthplace, an API key).
-
-## Pull requests and reviews
-
-- **Ordered work ("next", "then", "after that", "follow-up")** may open in parallel but
-  merges only after every earlier session item and named PR has merged (any repo, no time
-  cap; if one won't finish, hold and ask, autopilot included). Arm no auto-merge on it
-  until then. Read the list from the session's record, not memory.
-- **List every open PR in a stack, one URL per line** (the "View PR" chip shows only the
-  first).
-- **Codex is the automated reviewer** (not Copilot), triggered automatically; request it
-  only to confirm a rebutted false positive or as the verdict rule allows. Address every
-  comment unasked: fix in the same PR, folded into its commit (`--fixup`; group small
-  same-topic fixes), or defer a genuinely out-of-scope one.
-- **Reply to and resolve each addressed thread, one at a time**: push the fix, reply citing
-  the sha, resolve. Prefer `mcp__github__*` where mounted (Claude Code requires them),
-  else `gh`; `resolve_review_thread` (or `gh api graphql` `resolveReviewThread`) takes the
-  `PRRT_*` id from `review_threads[].id`, not `PRRC_*`.
-- **Report each review in your next message**: the commit it read (say if no longer the
-  head), finding count, one bullet per finding — review comment, top-level comment or
-  review body — most blocking first: claim, location, action or the options. This
-  outranks keep-replies-short; ask only the most blocking question.
-- **Read the Codex verdict, don't infer it**: its reaction on the PR body (`issue_read`;
-  `eyes` reading, `+1` clean, revoked on push — `+1` on green CI is a merge; leave those
-  reactions to Codex), not a thread's `Useful?` bar. Findings arrive as review comments,
-  top-level comments or reviews — read all three to the last page — and block the merge
-  until fixed, rebutted or deferred; an acknowledgment isn't an answer. A clean review
-  with no reaction, or an unanswered rebuttal → `@codex review` five minutes later;
-  nothing five minutes after the push, or stuck at running (👀) ten minutes → poke. A
-  poke that hangs the same way gets a second an hour later; escalate only if that one
-  hangs too, never after one (maintainer, 2026-10-22).
-- **Once Codex has +1'd a head, make no unnecessary change without asking** (maintainer,
-  2026-10-13); a required rebase (`dirty`, or `behind` where up to date is required), a
-  red-CI fix, and drive or autopilot proceed unasked.
-- **Judge every comment on merit**, whoever wrote it. A cited rule is a reading — check
-  what it says; Codex over-reads privacy rules, and an over-strict finding quietly costs
-  needed capability. Quote and decline; a genuine rule-vs-need conflict is the
-  maintainer's call. Declining doesn't clear the `codex` status: poke as the verdict rule
-  allows (or let the next push), and escalate if it re-raises.
-- **A second verified finding in the same mechanism is a design question**: look for the
-  shape elsewhere and whether a design change deletes the class; say so on the thread —
-  the maintainer decides, autopilot included.
-- **Never leave a thread silently dismissed**: answer (a disagreement is an answer — say
-  why), then resolve once the fix is on the head or the point is rebutted; anything still
-  to do stays open. Acknowledgment noise beats silence.
-- **Defer a real out-of-scope finding** by committing and pushing a `TODO.md` entry,
-  replying with its sha, and resolving (threadless: skip only the resolve); poke only as
-  the verdict rule allows, and escalate if the re-review re-raises it.
-- **Skip your own echoes silently**: the test is "did *I* just post this body?", not the
-  author.
-
-## CI
-
-- **Wait for CI** before claiming a change works anywhere you can't test locally — don't
-  busy-poll: a failure arrives on the subscription, success is the scheduled check's job.
-- **Report significant CI timing regressions** (>25% or >30 s on a job under ~5 min) with
-  the likely cause: a heavy new dependency, a slow new test, cache invalidation.
-
-## Cost and reliability
-
-Call out cost and reliability up front for new infrastructure or external API calls (more
-HERE/Mapbox calls, third-party APIs): free-tier thresholds, rough $/month at expected
-traffic, new failure modes; if impact is effectively zero, say so.
+- **Checks**. `npm test` and `npm run lint` pass before you're done; `npm run build` too
+  for build changes.
+- **Tests**. They sit beside their source; build fixtures with `src/testFixtures.ts`.
+- **Geocoding**. A failure must never pass as "no location".
+- **Privacy**. GEDCOM files are PII about living relatives: never commit, quote or build
+  a fixture from a real one; invent obviously fake people. The same goes for API tokens
+  and screenshots of a real tree.
+- **New PRs**. Never open one on a commit that already had one: it inherits the old
+  Codex verdict.
+- **Prefix**. `todo:` marks a `TODO.md`-only change.
+- **SHAs**. Report the short SHA after each push or merge.
+- **Dependency updates**. They arrive weekly from mikelward/npm-update, which gedmap
+  pilots.
+- **Node**. `.nvmrc` and `engines.node` move together. The session-start hook is shared
+  with newshacker and readmo: change all three.

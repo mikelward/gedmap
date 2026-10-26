@@ -94,6 +94,15 @@ under Antigravity's 24,000-byte cap without losing why a rule exists.
   floor that is too high still clears a `>=` check. Hence `npm` disabled in
   `packageRules` and the guard pinning the floor exactly.
 
+- **Editing `renovate.json` or re-enabling it.** Validate with
+  `npx --package renovate renovate-config-validator`. Silence isn't success (a
+  `DONE` job may create nothing): read the developer.mend.io job log. Mend-side
+  `mode=silent` wins over `"mode": "full"` (switch: repo/org → Interactive). A
+  top-level `schedule` is a delay, not a gate (cooldowns 5/7/14 days
+  patch/minor/major plus `prConcurrentLimit` pace volume; security fixes ignore
+  schedules). Deleting `lockFileMaintenance.schedule` restores `before 4am on
+  monday` (`renovate.test.js` guards it, `mode` and `schedule`).
+
 ## Commit messages
 
 - **Why there is no `deps:` prefix.** `.github/workflows/npm-update.yml` used to
@@ -117,3 +126,14 @@ under Antigravity's 24,000-byte cap without losing why a rule exists.
   verdict sweep (`codex-review.yml`, the shared mikelward/codex-review action)
   resets it to `pending` within about a minute, but that races merge
   eligibility.
+
+
+## Waking PRs a merge leaves behind
+
+On receiving a "base now points at `<sha>`" message, fetch base and PR head by
+refspec (unshallowing) and test that head against the fetched tip, not `<sha>`
+(a later merge may have passed it): `behind` if `git merge-base --is-ancestor
+<tip> <head>` exits 1, `dirty` if `git merge-tree --write-tree` (Git 2.38+)
+exits 1; any other exit is a failure to report, not an answer. Your own rules
+then decide the rebase. The sender names no merge and no other PR because an
+older copy of these rules reads either as its own merge cue.

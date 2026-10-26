@@ -14,7 +14,7 @@ Client-side GEDCOM file analyzer that visualizes ancestor birthplaces on a Mapbo
 loaded and its `last_modified` date** (front matter), so a stale or wrong copy is caught
 first.
 
-Keep this file short — one-liners over essays, **under 24,000 bytes** (`wc -c AGENTS.md`):
+Keep this file short — one-liners over essays, **under 22,000 bytes** (`wc -c AGENTS.md`):
 Antigravity caps rule files at 24 KB and silently truncates the tail. State the rule and
 the failure it prevents; incident narratives belong in commits, background in
 `docs/agents-reference.md`. Add a rule the first time something bites, rewrite or trim
@@ -55,25 +55,25 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
 ## Talking to the user
 
 - **One question at a time**, in plain chat or the client's question tool
-  (`AskUserQuestion` in Claude Code, `ask_question` in Antigravity). After asking, stop and
-  wait: don't proceed on an assumed answer, pick a "recommended" option, or keep working
-  on what it affects. Never ask while the user is typing.
+  (`AskUserQuestion` in Claude Code, `ask_question` in Antigravity), never while the user
+  is typing. Then stop and wait: no assumed answer, self-picked "recommended" option, or
+  work on what it affects.
 - **Answer a mid-turn message first**, before any further tool call — except a merge cue,
   whose hygiene runs first and whose announced switch is the answer. **Claude Code only**
   (maintainer, 2026-10-25): its app reliably shows just a turn's last message, so reply
   only there, answering a mid-turn message at a stopping point soon.
-- **Message only when the user needs to see it** (maintainer, 2026-10-15): each notifies
-  their phone. Work in silence; speak up for a question or blocker, something to merge or
-  act on, a merge, an autopilot decision (to review when seen, never waited on), or a
-  change from the plan, `spec.md` or their instructions (review-prompted included). Never
-  for progress (a client's nudge doesn't count), a review or push alone (its report rides
-  the next message), routine machinery, or a mistake caught and fixed before it reached
-  the repo. The session-start `AGENTS.md` line still opens every session.
+- **Message only when the user needs to see it** (maintainer, 2026-10-15; each notifies
+  their phone): a question/blocker, something to merge or act on, a merge, an autopilot
+  decision (to review when seen, never waited on), or a change from the plan, `spec.md` or
+  their instructions (review-prompted included). Never progress (a client's nudge doesn't
+  count), a review or push alone (its report rides the next message), routine machinery,
+  or a mistake fixed before reaching the repo. The session-start line still opens every
+  session.
 - **Keep replies short**: lead with the most important point; ask before unloading more.
-- **End the turn by restating any pending decision** — a question you asked or an
-  autopilot guess for review — as the last line, written out, every turn until answered;
-  nothing pending, no line. The open-PR link goes just above it. A scheduled check that
-  finds nothing new re-arms silently and sends no reply.
+- **End the turn by restating any pending decision** (a question or autopilot guess) as
+  its last line, written out, every turn until answered, the open-PR link just above.
+  Nothing pending, no line. A scheduled check finding nothing new re-arms silently, no
+  reply.
 
 ## Node version
 
@@ -82,13 +82,9 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
   use `node-version-file: .nvmrc`. Currently Node **24** (active LTS).
 - **`.claude/hooks/session-start.sh` provisions the `.nvmrc` major before `npm install`**
   — automatically only in Claude Code; another agent runs the hook (or `nvm use`)
-  itself. It re-resolves the newest release every run and, offline, keeps the cached
-  toolchain and says so. It writes `PATH` to `$CLAUDE_ENV_FILE` when set; otherwise it
-  symlinks `node`/`npm`/`npx` (and `deno` where installed) into the first existing `PATH`
-  directory under `$HOME` (creating only `~/.local/bin`) — refusing, before any link, if
-  a tool is missing or unrunnable, if an earlier `PATH` entry supplies a name (asked per
-  tool), or over a real file — and refreshes its own links. Not an rc file: the harness
-  snapshots the environment before hooks run.
+  itself. It re-resolves the newest release every run (offline: keeps the cached
+  toolchain and says so) and writes `PATH` to `$CLAUDE_ENV_FILE`, else symlinks the tools
+  into `PATH` under `$HOME` (never an rc file); its refusals: `docs/agents-reference.md`.
 - **The hook and `scripts/session-start-hook.test.js` are identical in gedmap,
   newshacker and readmo**: change all three, keep the Node block byte-identical. The test
   runs the real hook via `SESSION_NODE_ROOT`/`SESSION_NODE_DIST_URL` (no network, no
@@ -102,27 +98,19 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
 - **The weekly batch lives in mikelward/npm-update**; `.github/workflows/npm-update.yml`
   is a thin caller (gedmap is its pilot consumer). Mechanism fixes land there, not here.
 - **Renovate is off** (`"enabled": false`, asserted by `renovate.test.js`; re-enabling is
-  deleting that key, and the rest of `renovate.json` stays dormant but intact). Dependabot
-  alerts stay on; its security updates are off (2026-09-11). So an advisory is an alert
-  to act on by hand — bump the package with any peer-pinned partner
-  (`@vitest/coverage-v8` for vitest) — unless the weekly batch already carried the fix.
-  Uninstalling the Mend app at developer.mend.io stops the jobs entirely.
-- **Editing `renovate.json` or re-enabling it**: validate with
-  `npx --package renovate renovate-config-validator`. Silence isn't success (a `DONE` job
-  may create nothing): read the developer.mend.io job log. Mend-side `mode=silent` wins
-  over `"mode": "full"` (switch: repo/org → Interactive). A top-level `schedule` is a
-  delay, not a gate (cooldowns 5/7/14 days patch/minor/major plus `prConcurrentLimit`
-  pace volume; security fixes ignore schedules). Deleting `lockFileMaintenance.schedule`
-  restores `before 4am on monday` (`renovate.test.js` guards it, `mode` and `schedule`).
-  Minors and patches auto-merge on green CI; majors and `0.x` wait; a red or skipped
-  check is a stop sign.
+  deleting that key, the rest of `renovate.json` kept dormant). Dependabot alerts stay on;
+  its security updates are off (2026-09-11): act on an advisory by hand, bumping any
+  peer-pinned partner (`@vitest/coverage-v8` for vitest), unless the weekly batch carried
+  the fix. Uninstalling the Mend app at developer.mend.io stops the jobs entirely.
+- **Editing `renovate.json` or re-enabling it**: follow the checklist in
+  `docs/agents-reference.md` (validator, job log, `mode`, schedules). Minors and patches
+  auto-merge on green CI; majors and `0.x` wait; a red or skipped check is a stop sign.
 - **`.npmrc`'s `min-release-age` (5 days, in step with the shortest cooldown) is the
-  cooldown lock-file and transitive resolution actually get**; it touches resolution
-  only (`npm ci` uses the lockfile). It needs npm ≥ 11.10.0, declared in `engines.npm`
-  and `constraints.npm` and pinned exactly (`renovate.test.js` asserts all three) —
-  `npm` is disabled in `packageRules`; raise
-  the floor by hand only if a later npm is genuinely required, after checking what the
-  Node major bundles. `min-release-age-exclude` takes an `npm audit fix` the window
+  cooldown lock-file and transitive resolution actually get** (resolution only; `npm ci`
+  uses the lockfile). It needs npm ≥ 11.10.0, pinned exactly in `engines.npm` and
+  `constraints.npm` (`renovate.test.js` asserts all three; `npm` is disabled in
+  `packageRules`); raise it by hand only if a later npm is genuinely required and the
+  Node major bundles it. `min-release-age-exclude` takes an `npm audit fix` the window
   blocks.
 
 ## Error handling
@@ -229,17 +217,16 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
   file is the repo owner's standing request — unless told "just commit / no PR yet",
   which holds until lifted.
 - **Watch your own PRs by subscription + one scheduled check.** Subscribe on open
-  (automatic in Claude Code, or `subscribe_pr_activity` where `claude-code-remote` exposes
-  it; a client with neither, like Antigravity, relies on the scheduled check alone). It
-  misses CI success, pushes, the merge, Codex's `+1` and Codex never answering, so keep
-  exactly one relative-delay check armed while the PR is open (`send_later` in Claude
-  Code; `schedule` with `DurationSeconds` in Antigravity, canceled via `manage_task`
-  `kill`) — minutes while CI or Codex is out or after a push, longer once only a human is
-  left. Settle a fired check first thing (update one that re-armed, replace one that
-  didn't); if the fire time isn't what you asked for, re-time it or say the watch isn't
-  armed; end each turn with one check naming the PR (not a SHA or list). Under drive, arm
-  auto-merge at open only where the ruleset requires the Codex verdict AND resolved
-  conversations.
+  (automatic in Claude Code, else `subscribe_pr_activity` where `claude-code-remote` has
+  it; Antigravity relies on the check alone). It misses CI success, pushes, the merge,
+  Codex's `+1` and Codex never answering, so keep exactly one relative-delay check armed
+  while the PR is open (`send_later`; in Antigravity `schedule` with `DurationSeconds`,
+  canceled via `manage_task` `kill`) — minutes while CI or Codex is out or after a push,
+  longer once only a human is left. Settle a fired check first thing (update one that
+  re-armed, replace one that didn't); if the fire time isn't what you asked for, re-time
+  it or say the watch isn't armed; end each turn with one check naming the PR (not a SHA
+  or list). Under drive, arm auto-merge at open only where the ruleset requires the Codex
+  verdict AND resolved conversations.
 - **Read `mergeable_state` at every check, wake and drive step**: `dirty`, or `behind`
   where the ruleset requires up to date, needs a rebase now, unasked. Fetch base and head
   by refspec, unshallow, rebase onto the fetched `origin/<base>` (not always `main`, never
@@ -249,13 +236,10 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
 - **Wake PRs a merge leaves behind.** First turn after your PR merges (by hand or
   auto-merge), message every other open PR on that base driven by another session (its
   body ends with the session URL): name that PR and say only that its base now points at
-  `<sha>`, whatever its state reads; name no merge and no other PR (older rules read
-  either as a merge cue). On receipt, fetch base and your PR's head by refspec
-  (unshallow) and test the head against the fetched tip, not `<sha>`: `behind` if `git
-  merge-base --is-ancestor <tip> <head>` exits 1, `dirty` if `git merge-tree
-  --write-tree` (Git 2.38+) exits 1; any other exit is a failure to report. Your rules
-  decide the rebase. Skip a PR with no session URL, or when your client has only local
-  subagent messaging; don't retry a failed send.
+  `<sha>`, whatever its state reads; name no merge and no other PR. Skip a PR with no
+  session URL, or when your client has only local subagent messaging; don't retry a
+  failed send. Receiving one: test and rebase per `docs/agents-reference.md` § Waking
+  PRs.
 - **On merge or close**, one last reply-and-resolve pass. On a merged PR anything real goes
   to a follow-up PR named on the thread before resolving; closed-unmerged is a stop —
   answer, resolve, open nothing. Then cancel the check and unsubscribe, if subscribed;
@@ -290,9 +274,9 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
   comment unasked: fix in the same PR, folded into its commit (`--fixup`; group small
   same-topic fixes), or defer a genuinely out-of-scope one.
 - **Reply to and resolve each addressed thread, one at a time**: push the fix, reply citing
-  the sha, resolve. Prefer `mcp__github__*` where mounted (Claude Code requires them);
-  else `gh`. `resolve_review_thread` (or `gh api graphql` `resolveReviewThread`) takes the
-  `PRRT_*` thread id from `review_threads[].id`, not a `PRRC_*` comment id.
+  the sha, resolve. Prefer `mcp__github__*` where mounted (Claude Code requires them),
+  else `gh`; `resolve_review_thread` (or `gh api graphql` `resolveReviewThread`) takes the
+  `PRRT_*` id from `review_threads[].id`, not `PRRC_*`.
 - **Report each review in your next message**: the commit it read (say if no longer the
   head), finding count, one bullet per finding — review comment, top-level comment or
   review body — most blocking first: claim, location, action or the options. This
@@ -301,12 +285,11 @@ npm test           # all tests once (test:watch; test:coverage for V8 coverage)
   `eyes` reading, `+1` clean, revoked on push — `+1` on green CI is a merge; leave those
   reactions to Codex), not a thread's `Useful?` bar. Findings arrive as review comments,
   top-level comments or reviews — read all three to the last page — and block the merge
-  until fixed, rebutted or deferred; an acknowledgment isn't an answer. A pending `codex`
-  status: findings → address them; a clean review with no reaction, or an unanswered
-  rebuttal → `@codex review` five minutes later; nothing at all five minutes after the
-  push, or a review stuck at running (👀) ten minutes on → poke. A poke that hangs the
-  same way gets a second an hour later; escalate only if that one hangs too, never after
-  one (maintainer, 2026-10-22).
+  until fixed, rebutted or deferred; an acknowledgment isn't an answer. A clean review
+  with no reaction, or an unanswered rebuttal → `@codex review` five minutes later;
+  nothing five minutes after the push, or stuck at running (👀) ten minutes → poke. A
+  poke that hangs the same way gets a second an hour later; escalate only if that one
+  hangs too, never after one (maintainer, 2026-10-22).
 - **Once Codex has +1'd a head, make no unnecessary change without asking** (maintainer,
   2026-10-13); a required rebase (`dirty`, or `behind` where up to date is required), a
   red-CI fix, and drive or autopilot proceed unasked.
